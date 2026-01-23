@@ -25,10 +25,10 @@ pub async fn add_dependency(project_dir: &Path, dep_spec: &str) -> anyhow::Resul
         // 如果在工作空间根目录，添加到 workspace.dependencies
         if is_workspace_root {
             crate::config::writer::add_workspace_dependency_to_manifest(&manifest_path, &key, "")?;
-            println!("{}", crate::i18n::tf("added_dependency", &[&key, "sbt project (workspace)"]));
+            println!("已添加依赖: {} = {}", key, "sbt project (workspace)");
         } else {
             crate::config::writer::add_dependency_to_manifest(&manifest_path, &key, "")?;
-            println!("{}", crate::i18n::tf("added_dependency", &[&key, "sbt project"]));
+            println!("已添加依赖: {} = {}", key, "sbt project");
         }
         return Ok(());
     }
@@ -64,10 +64,10 @@ pub async fn add_dependency(project_dir: &Path, dep_spec: &str) -> anyhow::Resul
     // 如果在工作空间根目录，添加到 workspace.dependencies
     if is_workspace_root {
         crate::config::writer::add_workspace_dependency_to_manifest(&manifest_path, &full_key, &version)?;
-        println!("{}", crate::i18n::tf("added_dependency", &[&full_key, &format!("{} (workspace)", version)]));
+        println!("已添加依赖: {} = {}", full_key, format!("{} (workspace)", version));
     } else {
         crate::config::writer::add_dependency_to_manifest(&manifest_path, &full_key, &version)?;
-        println!("{}", crate::i18n::tf("added_dependency", &[&full_key, &version]));
+        println!("已添加依赖: {} = {}", full_key, version);
     }
     Ok(())
 }
@@ -81,7 +81,7 @@ async fn parse_dep_spec(spec: &str, default_scala_version: &str) -> anyhow::Resu
         // Scala格式：group::artifact:version
         let parts: Vec<&str> = spec.split("::").collect();
         if parts.len() != 2 {
-            anyhow::bail!("{}", crate::i18n::t("invalid_dependency_format"));
+            anyhow::bail!("{}", "依赖格式无效，请使用完整格式：group::artifact:version，例如 org.typelevel::cats-core:2.9.0");
         }
         let group = parts[0];
         let artifact_version = parts[1];
@@ -90,7 +90,7 @@ async fn parse_dep_spec(spec: &str, default_scala_version: &str) -> anyhow::Resu
         // Java格式：group:artifact:version
         let parts: Vec<&str> = spec.split(':').collect();
         if parts.len() != 3 {
-            anyhow::bail!("{}", crate::i18n::t("invalid_dependency_format"));
+            anyhow::bail!("{}", "依赖格式无效，请使用完整格式：group::artifact:version，例如 org.typelevel::cats-core:2.9.0");
         }
         let group = parts[0];
         let artifact = parts[1];
@@ -102,7 +102,7 @@ async fn parse_dep_spec(spec: &str, default_scala_version: &str) -> anyhow::Resu
 
     let av_parts: Vec<&str> = artifact_version.split(':').collect();
     if av_parts.len() != 2 {
-        anyhow::bail!("{}", crate::i18n::t("invalid_dependency_format"));
+        anyhow::bail!("{}", "依赖格式无效，请使用完整格式：group::artifact:version，例如 org.typelevel::cats-core:2.9.0");
     }
 
     let artifact_with_scala = av_parts[0];
@@ -110,7 +110,7 @@ async fn parse_dep_spec(spec: &str, default_scala_version: &str) -> anyhow::Resu
 
     // 检查artifact是否包含::，如果是，则报错，因为artifact不应该有::
     if artifact_with_scala.contains("::") {
-        anyhow::bail!("{}", crate::i18n::t("invalid_artifact_format"));
+        anyhow::bail!("{}", "依赖格式无效，artifact 不应包含 '::', 请使用 group:artifact:version 格式");
     }
 
     let artifact_parts: Vec<&str> = artifact_with_scala.split('@').collect();
@@ -123,7 +123,7 @@ async fn parse_dep_spec(spec: &str, default_scala_version: &str) -> anyhow::Resu
     let full_artifact = format!("{}::{}", group, artifact);
 
     if version.is_empty() || version == "latest" {
-        anyhow::bail!("{}", crate::i18n::t("version_must_be_specified"));
+        anyhow::bail!("{}", "必须明确指定版本，不允许使用 'latest'");
     }
 
     Ok((full_artifact, scala_ver.to_string(), version.to_string()))

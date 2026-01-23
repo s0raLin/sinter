@@ -136,25 +136,31 @@ impl CoursierDependencyManager {
 #[async_trait::async_trait]
 impl DependencyManager for CoursierDependencyManager {
     async fn prepare_dependencies(&self, deps: &[Dependency], _target_dir: &Path) -> anyhow::Result<()> {
+        eprintln!("DEBUG: Starting dependency preparation for {} dependencies", deps.len());
         let coursier_path = get_coursier_path().await
             .ok_or_else(|| anyhow!("coursier is not available"))?;
-        
+
         for dep in deps {
             match dep {
                 Dependency::Maven { .. } => {
+                    eprintln!("DEBUG: Fetching dependency: {}", dep.coord());
                     // 使用coursier fetch下载依赖（这会自动缓存）
                     let mut cmd = Command::new(&coursier_path);
                     cmd.arg("fetch")
                         .arg("--quiet")
                         .arg(dep.coord());
-                    
+
                     let output = cmd.output().await?;
                     if !output.status.success() {
                         let err = String::from_utf8_lossy(&output.stderr);
+                        eprintln!("DEBUG: Failed to fetch dependency {}: {}", dep.coord(), err);
                         anyhow::bail!("Failed to fetch dependency {}: {}", dep.coord(), err);
+                    } else {
+                        eprintln!("DEBUG: Successfully fetched dependency: {}", dep.coord());
                     }
                 }
                 Dependency::Sbt { path } => {
+                    eprintln!("DEBUG: Validating sbt project: {}", path);
                     // 验证sbt项目存在
                     let sbt_project_path = Path::new(path);
                     if !sbt_project_path.exists() {
@@ -163,7 +169,8 @@ impl DependencyManager for CoursierDependencyManager {
                 }
             }
         }
-        
+
+        eprintln!("DEBUG: Dependency preparation completed");
         Ok(())
     }
 
@@ -232,6 +239,7 @@ impl DependencyManager for CoursierDependencyManager {
     }
 
     async fn get_transitive_dependencies(&self, deps: &[Dependency]) -> anyhow::Result<Vec<Dependency>> {
+        eprintln!("DEBUG: CoursierDependencyManager.get_transitive_dependencies called with {} deps", deps.len());
         let coursier_path = get_coursier_path().await
             .ok_or_else(|| anyhow!("coursier is not available"))?;
 
@@ -239,6 +247,7 @@ impl DependencyManager for CoursierDependencyManager {
         let mut processed_coords: HashSet<String> = HashSet::new();
 
         for dep in deps {
+            eprintln!("DEBUG: Processing dependency: {}", dep.coord());
             match dep {
                 Dependency::Maven { group, artifact, version, is_scala } => {
                     let coord = if *is_scala {
@@ -247,14 +256,16 @@ impl DependencyManager for CoursierDependencyManager {
                         format!("{}:{}:{}", group, artifact, version)
                     };
 
+                    eprintln!("DEBUG: Running coursier resolve for {}", coord);
                     let mut cmd = Command::new(&coursier_path);
                     cmd.arg("resolve")
                         .arg("--quiet")
                         .arg("--print-tree=false")
-                        .arg("--intransitive") 
+                        .arg("--intransitive")
                         .arg(&coord);
 
                     let output = cmd.output().await?;
+                    eprintln!("DEBUG: coursier resolve completed for {}", coord);
                     if !output.status.success() {
                         eprintln!("Warning: Failed to resolve transitive dependencies for {}: {}", coord, String::from_utf8_lossy(&output.stderr));
                         if processed_coords.insert(coord.clone()) {

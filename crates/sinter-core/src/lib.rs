@@ -29,18 +29,6 @@ pub mod runtime;
 // 核心模块
 pub mod core;
 
-// 路由模块
-pub mod routes;
-
-// 控制器模块
-pub mod controllers;
-
-// 服务层模块
-pub mod services;
-
-// 国际化支持（构建时生成）
-pub mod i18n;
-
 // 功能模块（已迁移）
 pub mod deps;
 
@@ -50,8 +38,6 @@ pub mod toolkit;
 // 错误处理
 pub mod error;
 
-// 依赖注入
-pub mod di;
 
 // 公共 API
 pub use core::{CommandHandler, Sinter};

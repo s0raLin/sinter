@@ -5,7 +5,7 @@ use crate::toolkit::path::PathManager;
 pub async fn cmd_new(cwd: &PathManager, name: &str) -> anyhow::Result<()> {
     let proj_dir = cwd.join(name);
     if proj_dir.exists_sync() {
-        println!("{}", crate::i18n::tf("project_already_exists", &[name]));
+        println!("项目 '{}' 已存在", name);
         return Ok(());
     }
 
@@ -33,7 +33,7 @@ pub async fn cmd_new(cwd: &PathManager, name: &str) -> anyhow::Result<()> {
             .to_string();
         match crate::config::writer::add_workspace_member(&manifest_path, &relative_path) {
             Ok(_) => {
-                println!("{}", crate::i18n::tf("added_project_to_workspace", &[name]));
+                println!("已添加项目 '{}' 到工作空间", name);
             }
             Err(e) => {
                 if !e.to_string().contains("already exists") {
@@ -43,6 +43,6 @@ pub async fn cmd_new(cwd: &PathManager, name: &str) -> anyhow::Result<()> {
         }
     }
 
-    println!("{}", crate::i18n::tf("created_project", &[name]));
+    println!("已创建项目 `{}`", name);
     Ok(())
 }

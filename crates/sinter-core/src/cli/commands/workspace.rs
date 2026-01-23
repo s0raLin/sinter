@@ -13,7 +13,7 @@ pub async fn cmd_workspace(cwd: &PathManager, subcommand: &WorkspaceCommands) ->
 async fn cmd_workspace_add(cwd: &PathManager, member_paths: &[String]) -> anyhow::Result<()> {
     // Find workspace root
     let workspace_root = crate::config::loader::find_workspace_root(cwd)
-        .ok_or_else(|| anyhow::anyhow!("{}", crate::i18n::t("not_in_workspace")))?;
+        .ok_or_else(|| anyhow::anyhow!("{}", "不在工作空间中"))?;
 
     let manifest_path = workspace_root.join("project.toml");
 
@@ -21,10 +21,10 @@ async fn cmd_workspace_add(cwd: &PathManager, member_paths: &[String]) -> anyhow
         // Check if member already exists by trying to add it
         match crate::config::writer::add_workspace_member(&manifest_path, member_path) {
             Ok(_) => {
-                println!("{}", crate::i18n::tf("added_member_to_workspace", &[member_path]));
+                println!("已添加成员 '{}' 到工作空间", member_path);
             }
             Err(_) => {
-                println!("{}", crate::i18n::tf("member_already_exists", &[member_path]));
+                println!("成员 '{}' 已存在于工作空间", member_path);
             }
         }
     }

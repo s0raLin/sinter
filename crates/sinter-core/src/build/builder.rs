@@ -12,6 +12,8 @@ pub async fn build_with_deps(
     setup_bsp_flag: bool,
     is_workspace_build: bool,
 ) -> anyhow::Result<()> {
+    eprintln!("DEBUG: build_with_deps called for project at {}", proj_dir.display());
+    eprintln!("DEBUG: Starting build with {} dependencies, backend: {}", deps.len(), backend);
     let source_path = proj_dir.join(source_dir);
     let target_path = if let Some(ws_root) = workspace_root {
         ws_root.join(target_dir)
@@ -52,7 +54,11 @@ pub async fn build_with_deps(
             let args_str: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
             let output = crate::build::run_scala_cli(&args_str, Some(proj_dir)).await?;
             if !output.status.success() {
-                anyhow::bail!("Build failed with dependencies");
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                eprintln!("DEBUG: scala-cli compile failed. stdout: {}", stdout);
+                eprintln!("DEBUG: scala-cli compile failed. stderr: {}", stderr);
+                anyhow::bail!("Build failed with dependencies: {}", stderr);
             }
         }
         "sbt" => {
@@ -77,5 +83,6 @@ pub async fn build_with_deps(
     let _ = fs::remove_dir_all(source_path.join(".bsp")).await;
     let _ = fs::remove_dir_all(source_path.join(".scala-build")).await;
 
+    eprintln!("DEBUG: Build completed successfully");
     Ok(())
 }

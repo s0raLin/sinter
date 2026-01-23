@@ -7,32 +7,6 @@ use std::process::Command;
 use std::os::unix::fs::PermissionsExt;
 
 fn main() {
-    println!("cargo:rerun-if-changed=templates/i18n.json");
-
-    let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-    let i18n_path = Path::new(&manifest_dir).join("templates/i18n.json");
-    let i18n_content = fs::read_to_string(&i18n_path).expect("Failed to read i18n.json");
-
-    let translations: serde_json::Value = serde_json::from_str(&i18n_content).expect("Failed to parse i18n.json");
-
-    let lang = if cfg!(feature = "lang-zh") { "zh" } else { "en" };
-    let lang_translations = translations.get(lang).and_then(|v| v.as_object()).expect(&format!("Language '{}' not found", lang));
-
-    let out_dir = env::var("OUT_DIR").unwrap();
-    let out_path = Path::new(&out_dir).join("i18n.rs");
-
-    let mut code = String::new();
-    code.push_str("// Auto-generated i18n code\n");
-    code.push_str("pub fn t(key: &str) -> &'static str {\n match key {\n");
-    for (key, value) in lang_translations {
-        let escaped = value.as_str().unwrap().replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n");
-        code.push_str(&format!(" \"{}\" => \"{}\",\n", key, escaped));
-    }
-    code.push_str(" _ => \"[Translation key not found]\",\n }\n}\n\n");
-    code.push_str("pub fn tf(key: &str, args: &[&str]) -> String {\n let template = t(key);\n let mut result = template.to_string();\n for arg in args {\n if let Some(pos) = result.find(\"{}\") {\n let (left, right) = result.split_at(pos);\n result = format!(\"{}{}{}\", left, arg, &right[2..]);\n } }\n result\n}\n");
-
-    fs::write(&out_path, code).expect("Failed to write i18n.rs");
-
     // 下载coursier（简化平台检测）
     download_coursier();
 }

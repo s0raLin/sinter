@@ -8,35 +8,19 @@ use crate::ide::setup_bsp;
 use crate::deps::add_dependency;
 use crate::toolkit::path::PathManager;
 use crate::config::loader;
-use crate::routes::Router;
-use crate::controllers::project::ProjectController;
-use crate::di::{init_global_container, get_global_context, DefaultServiceProvider};
-use crate::error::Result;
-
-/// 获取路由分发器
-fn get_router() -> Result<Router> {
-    // 初始化全局DI容器
-    let provider = DefaultServiceProvider::new();
-    init_global_container(&provider)
-        .map_err(|e| crate::error::utils::from_anyhow(anyhow::anyhow!(e)))?;
-
-    // 获取DI上下文
-    let di_context = get_global_context()
-        .map_err(|e| crate::error::utils::from_anyhow(anyhow::anyhow!(e)))?;
-
-    Ok(Router::new()
-        .register("new", ProjectController::new(di_context.clone()))
-        .register("init", ProjectController::new(di_context)))
-}
+use crate::error::{Result, utils};
+use crate::toolkit::file::ProjectCreator;
+use crate::toolkit::template::Template;
+use crate::toolkit::path::paths;
 
 /// 执行内置命令
 pub async fn execute_command(command: Commands, cwd: &PathManager) -> Result<()> {
-    let router = get_router()?;
-
     match command {
-        Commands::New { .. } | Commands::Init => {
-            // 使用路由分发器处理项目相关命令
-            router.dispatch(command, cwd.clone()).await?;
+        Commands::New { name } => {
+            create_project(&name, cwd).await?;
+        }
+        Commands::Init => {
+            init_workspace(cwd).await?;
         }
         Commands::Workspace { subcommand } => {
             cmd_workspace(cwd, &subcommand).await?;
@@ -78,11 +62,11 @@ pub async fn execute_default(cwd: &PathManager) -> Result<()> {
         } else {
             println!(
                 "{}",
-                crate::i18n::tf("main_file_not_found", &[&target.display().to_string()])
+format!("未找到主文件: {}", target.display())
             );
         }
     } else {
-        println!("{}", crate::i18n::t("no_command_provided"));
+        println!("{}", "未提供命令。使用 --help 获取用法。");
     }
     Ok(())
 }
@@ -120,13 +104,13 @@ async fn execute_build(cwd: &PathManager) -> Result<()> {
                     true, // is_workspace_build
                 )
                 .await?;
-                println!("{}", crate::i18n::tf("built_member", &[member.get_name()]));
+                println!("{}", format!("已构建成员: {}", member.get_name()));
             }
             // Setup BSP for the entire workspace
             if let Some(bk) = backend {
                 setup_bsp(cwd, &all_deps, &source_dirs, &bk).await?;
             }
-            println!("{}", crate::i18n::t("workspace_build_succeeded"));
+            println!("{}", "工作空间构建成功");
         } else {
             // Single project or member in workspace
             if let Some(workspace_root) = crate::config::loader::find_workspace_root(cwd) {
@@ -151,7 +135,7 @@ async fn execute_build(cwd: &PathManager) -> Result<()> {
                         .await?;
                         println!(
                             "{}",
-                            crate::i18n::tf("build_succeeded_with_deps", &[&transitive_deps.len().to_string()])
+                            format!("构建成功，包含 {} 个依赖", transitive_deps.len())
                         );
                     } else {
                         return Err(crate::error::utils::single_validation_error(
@@ -168,13 +152,13 @@ async fn execute_build(cwd: &PathManager) -> Result<()> {
                         project.get_target_dir(),
                         project.get_backend(),
                         None,
-                        true, // Setup BSP for single project
+                        false, // Temporarily disable BSP setup to avoid network issues
                         false, // not workspace build
                     )
                     .await?;
                     println!(
                         "{}",
-                        crate::i18n::tf("build_succeeded_with_deps", &[&transitive_deps.len().to_string()])
+                        format!("构建成功，包含 {} 个依赖", transitive_deps.len())
                     );
                 }
             } else {
@@ -187,13 +171,13 @@ async fn execute_build(cwd: &PathManager) -> Result<()> {
                     project.get_target_dir(),
                     project.get_backend(),
                     None,
-                    true, // Setup BSP for single project
+                    false, // Temporarily disable BSP setup to avoid network issues
                     false, // not workspace build
                 )
                 .await?;
                 println!(
                     "{}",
-                    crate::i18n::tf("build_succeeded_with_deps", &[&transitive_deps.len().to_string()])
+                    format!("构建成功，包含 {} 个依赖", transitive_deps.len())
                 );
             }
         }
@@ -269,7 +253,7 @@ async fn execute_run(cwd: &PathManager, file: Option<PathManager>, lib: bool) ->
         let _ = run_scala_file(&project_dir, &target, true).await?;
         println!(
             "{}",
-            crate::i18n::tf("lib_compiled_only", &[&target.display().to_string()])
+            format!("库: {} (仅编译)", target.display())
         );
     } else {
         let output = run_single_file_with_deps(&project_dir, &target, &deps).await?;
@@ -286,5 +270,70 @@ async fn execute_add(cwd: &PathManager, deps: &[String]) -> anyhow::Result<()> {
     for dep in deps {
         add_dependency(&project_dir.to_path_buf(), dep).await?;
     }
+    Ok(())
+}
+
+/// 创建新项目
+async fn create_project(name: &str, cwd: &PathManager) -> Result<()> {
+    let proj_dir = cwd.join(name);
+    if proj_dir.exists_sync() {
+        println!("{}", format!("项目 '{}' 已存在", name));
+        return Ok(());
+    }
+
+    let creator = ProjectCreator::new(&proj_dir);
+    creator.create_dirs(&["src/main/scala"]).await?;
+
+    // project.toml
+    let template_path = paths::project_template();
+    let template_content = template_path.read_sync()?;
+    let template = Template::new(&template_content);
+    let manifest = template.replace("name", name).into_string();
+    creator.write_file("project.toml", &manifest).await?;
+
+    // Hello world
+    let main_template_path = paths::main_template();
+    let code = main_template_path.read_sync()?;
+    creator.write_file("src/main/scala/Main.scala", &code).await?;
+
+    // Auto-add to workspace if in one
+    if let Some(workspace_root) = crate::config::loader::find_workspace_root(cwd) {
+        let manifest_path = workspace_root.join("project.toml");
+        let relative_path = proj_dir.strip_prefix(&workspace_root)
+            .unwrap_or(&proj_dir)
+            .to_string_lossy()
+            .to_string();
+        match crate::config::writer::add_workspace_member(&manifest_path, &relative_path) {
+            Ok(_) => {
+                println!("{}", format!("已添加项目 '{}' 到工作空间", name));
+            }
+            Err(e) => {
+                if !e.to_string().contains("already exists") {
+                    eprintln!("Warning: Failed to add project to workspace: {}", e);
+                }
+            }
+        }
+    }
+
+    println!("{}", format!("已创建项目 `{}`", name));
+    Ok(())
+}
+
+/// 初始化工作区
+async fn init_workspace(cwd: &PathManager) -> Result<()> {
+    // Check if project.toml already exists
+    let manifest_path = cwd.join("project.toml");
+    if manifest_path.exists_sync() {
+        return Err(utils::single_validation_error(
+            "project.toml 已存在于此目录".to_string()
+        ));
+    }
+
+    // Create workspace project.toml
+    let template_path = paths::workspace_template();
+    let manifest = template_path.read_sync()?;
+    manifest_path.write_sync(&manifest)?;
+
+    println!("{}", format!("已初始化空工作空间于 {}", cwd.to_path_buf().display()));
     Ok(())
 }

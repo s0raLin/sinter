@@ -47,10 +47,13 @@ async fn check_command_available(cmd: &str) -> bool {
 
 /// 获取scala-cli可执行文件路径
 pub async fn get_scala_cli_path() -> Option<String> {
+    eprintln!("DEBUG: Checking for scala-cli path");
     // 首先尝试使用系统命令
     if check_command_available("scala-cli").await {
+        eprintln!("DEBUG: Using system scala-cli");
         return Some("scala-cli".to_string());
     }
+    eprintln!("DEBUG: System scala-cli not available");
 
     // 回退到打包的scala-cli
     if let Some(bundled_path) = get_bundled_scala_cli_path() {
@@ -138,14 +141,30 @@ pub async fn run_scala_cli(args: &[&str], cwd: Option<&std::path::Path>) -> anyh
     let scala_cli_path = get_scala_cli_path().await
         .ok_or_else(|| anyhow::anyhow!("scala-cli is not available"))?;
 
+    eprintln!("DEBUG: Running scala-cli command: {} {:?}", scala_cli_path, args);
+    if let Some(dir) = cwd {
+        eprintln!("DEBUG: Working directory for scala-cli: {}", dir.display());
+    } else {
+        eprintln!("DEBUG: No working directory set for scala-cli");
+    }
     let mut cmd = Command::new(&scala_cli_path);
+
+    // 先添加子命令和参数
     cmd.args(args);
+    // 然后添加 --jvm system 来使用系统JVM，避免下载
+    cmd.arg("--jvm").arg("system");
 
     if let Some(dir) = cwd {
         cmd.current_dir(dir);
+        eprintln!("DEBUG: Working directory: {}", dir.display());
     }
 
+    // 确保stdin是null，避免等待输入
+    cmd.stdin(std::process::Stdio::null());
+
+    eprintln!("DEBUG: About to execute cmd.output().await");
     let output = cmd.output().await?;
+    eprintln!("DEBUG: scala-cli command completed with status: {}", output.status);
     Ok(output)
 }
 

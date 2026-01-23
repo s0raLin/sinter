@@ -72,8 +72,13 @@ pub async fn get_transitive_dependencies_with_workspace(
     workspace_root: Option<&Project>,
     project_dir: &std::path::Path,
 ) -> anyhow::Result<Vec<Dependency>> {
+    eprintln!("DEBUG: Starting get_transitive_dependencies_with_workspace for project at {}", project_dir.display());
     let direct_deps = get_dependencies_with_workspace(project, workspace_root);
+    eprintln!("DEBUG: Found {} direct dependencies", direct_deps.len());
     let mut dep_manager = crate::deps::default_dependency_manager().await;
     dep_manager.set_project_dir(project_dir);
-    dep_manager.get_transitive_dependencies(&direct_deps).await
+    eprintln!("DEBUG: Calling dep_manager.get_transitive_dependencies");
+    let result = dep_manager.get_transitive_dependencies(&direct_deps).await;
+    eprintln!("DEBUG: get_transitive_dependencies_with_workspace completed");
+    result
 }

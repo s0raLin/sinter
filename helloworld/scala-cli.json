@@ -1,0 +1,20 @@
+{
+  "name": "scala-cli",
+  "argv": [
+    "/home/cangli/.local/share/coursier/bin/.scala-cli.aux",
+    "bsp",
+    "--json-options",
+    "/home/cangli/Desktop/rust/sinter/helloworld/src/main/scala/.scala-build/ide-options-v2.json",
+    "--json-launcher-options",
+    "/home/cangli/Desktop/rust/sinter/helloworld/src/main/scala/.scala-build/ide-launcher-options.json",
+    "--envs-file",
+    "/home/cangli/Desktop/rust/sinter/helloworld/src/main/scala/.scala-build/ide-envs.json",
+    "/home/cangli/Desktop/rust/sinter/helloworld/src/main/scala/Main.scala"
+  ],
+  "version": "1.11.0",
+  "bspVersion": "2.1.1",
+  "languages": [
+    "scala",
+    "java"
+  ]
+}
