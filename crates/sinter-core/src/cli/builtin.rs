@@ -129,7 +129,7 @@ async fn execute_build(cwd: &PathManager) -> Result<()> {
                             member.get_target_dir(),
                             member.get_backend(),
                             Some(&workspace_root),
-                            true, // Setup BSP for this member
+                            false, // Do not setup BSP for individual member, will setup for workspace
                             false, // not workspace build
                         )
                         .await?;
@@ -152,7 +152,7 @@ async fn execute_build(cwd: &PathManager) -> Result<()> {
                         project.get_target_dir(),
                         project.get_backend(),
                         None,
-                        false, // Temporarily disable BSP setup to avoid network issues
+                        true, // Setup BSP for IDE support
                         false, // not workspace build
                     )
                     .await?;
@@ -171,7 +171,7 @@ async fn execute_build(cwd: &PathManager) -> Result<()> {
                     project.get_target_dir(),
                     project.get_backend(),
                     None,
-                    false, // Temporarily disable BSP setup to avoid network issues
+                    true, // Setup BSP for IDE support
                     false, // not workspace build
                 )
                 .await?;
@@ -231,17 +231,45 @@ async fn execute_run(cwd: &PathManager, file: Option<PathManager>, lib: bool) ->
     };
 
     // 设置 BSP 以支持 IDE
-    let bsp_dir = workspace_root_ref.map(|p| PathManager::from(p.clone())).unwrap_or_else(|| project_dir.clone());
-    let source_dirs = if let Some(ws_root) = workspace_root_ref {
-        let member_name = project_dir.strip_prefix(ws_root)
-            .map_err(|_| anyhow::anyhow!("Invalid project directory structure"))?
-            .to_str()
-            .ok_or_else(|| anyhow::anyhow!("Invalid UTF-8 in path"))?;
-        vec![(member_name.to_string(), project.get_source_dir().to_string())]
+    // For workspace, setup BSP at workspace root with all members
+    // For single project, setup BSP at project root
+    let (bsp_dir, source_dirs, all_deps, backend) = if let Some(ws_root) = workspace_root_ref {
+        // In workspace, setup BSP for entire workspace
+        let ws_root_path = ws_root.as_path();
+        if let Some((_ws_proj, members)) = crate::config::loader::load_workspace(ws_root_path)? {
+            let mut ws_source_dirs = Vec::new();
+            let mut ws_all_deps = Vec::new();
+            let mut ws_backend = None;
+            
+            for member in members.iter() {
+                let member_dir = PathManager::from(ws_root_path).join(member.get_name());
+                let member_deps = crate::dependency::get_transitive_dependencies_with_workspace(
+                    member, 
+                    Some(&crate::config::loader::load_project(ws_root_path)?), 
+                    member_dir.as_path()
+                ).await?;
+                ws_all_deps.extend(member_deps);
+                ws_source_dirs.push((member.get_name().to_string(), member.get_source_dir().to_string()));
+                if ws_backend.is_none() {
+                    ws_backend = Some(member.get_backend().to_string());
+                }
+            }
+            
+            (PathManager::from(ws_root_path), ws_source_dirs, ws_all_deps, ws_backend.unwrap_or_else(|| project.get_backend().to_string()))
+        } else {
+            // Not actually a workspace, treat as single project
+            let bsp_dir = project_dir.clone();
+            let source_dirs = vec![("".to_string(), project.get_source_dir().to_string())];
+            (bsp_dir, source_dirs, deps.clone(), project.get_backend().to_string())
+        }
     } else {
-        vec![("".to_string(), project.get_source_dir().to_string())]
+        // Single project
+        let bsp_dir = project_dir.clone();
+        let source_dirs = vec![("".to_string(), project.get_source_dir().to_string())];
+        (bsp_dir, source_dirs, deps.clone(), project.get_backend().to_string())
     };
-    setup_bsp(bsp_dir.as_path(), &deps, &source_dirs, project.get_backend()).await?;
+    
+    setup_bsp(bsp_dir.as_path(), &all_deps, &source_dirs, &backend).await?;
 
     let target = file.unwrap_or_else(|| PathManager::from(project.get_main_file_path()));
 

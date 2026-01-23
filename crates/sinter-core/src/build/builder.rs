@@ -80,8 +80,17 @@ pub async fn build_with_deps(
     };
 
     // Always clean up build artifacts that scala-cli drops inside the source tree.
+    // These should be in the project root, not in the source directory
     let _ = fs::remove_dir_all(source_path.join(".bsp")).await;
     let _ = fs::remove_dir_all(source_path.join(".scala-build")).await;
+    
+    // Clean up scala-cli.json in project root if it exists (it should be in .bsp directory)
+    // The correct scala-cli.json should be in .bsp/scala-cli.json, not in the root
+    let root_scala_cli_json = proj_dir.join("scala-cli.json");
+    if root_scala_cli_json.exists() {
+        eprintln!("DEBUG: Removing scala-cli.json from project root (should be in .bsp directory)");
+        let _ = fs::remove_file(&root_scala_cli_json).await;
+    }
 
     eprintln!("DEBUG: Build completed successfully");
     Ok(())

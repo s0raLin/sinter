@@ -406,7 +406,7 @@ impl DependencyManager for ScalaCliDependencyManager {
 
     async fn get_transitive_dependencies(&self, deps: &[Dependency]) -> anyhow::Result<Vec<Dependency>> {
         // Scala CLI 没有原生传递依赖解析功能，尝试回退到 Coursier
-        if let Some(coursier_path) = get_coursier_path().await {
+        if let Some(_coursier_path) = get_coursier_path().await {
             // 使用 CoursierDependencyManager 的逻辑来解析，但不设置 project_dir
             let coursier_manager = CoursierDependencyManager::new();
             coursier_manager.get_transitive_dependencies(deps).await
@@ -438,15 +438,17 @@ pub fn default_dependency_manager_sync() -> Box<dyn DependencyManager + Send + S
     // 修正：使用 tokio runtime 来安全地调用异步检查，并避免在非异步环境中多次创建 runtime
     // 生产环境中，最好在应用的启动时只创建一次 runtime
     let rt = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime for sync check");
-    
+
     // 检查 coursier 是否可用
     let is_coursier_available = rt.block_on(check_coursier_available());
 
-    if is_coursier_available {
+    let manager: Box<dyn DependencyManager + Send + Sync> = if is_coursier_available {
         Box::new(CoursierDependencyManager::new())
     } else {
         Box::new(ScalaCliDependencyManager)
-    }
+    };
+
+    manager
 }
 
 // --- SBT 辅助解析函数 ---
