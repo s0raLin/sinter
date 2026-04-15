@@ -8,9 +8,6 @@ pub mod models;
 // 配置管理
 pub mod config;
 
-// 依赖管理
-pub mod dependency;
-
 // 构建系统
 pub mod build;
 
@@ -29,7 +26,7 @@ pub mod runtime;
 // 核心模块
 pub mod core;
 
-// 功能模块（已迁移）
+// 功能模块
 pub mod deps;
 
 // 工具包

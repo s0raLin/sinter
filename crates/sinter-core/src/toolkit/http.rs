@@ -1,4 +1,4 @@
-use reqwest::{Client, Method, RequestBuilder, Response};
+use reqwest::{Client, Method, Response};
 use std::collections::HashMap;
 
 // Similar to sttp

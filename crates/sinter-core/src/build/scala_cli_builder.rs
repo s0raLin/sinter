@@ -156,26 +156,37 @@ pub async fn run_scala_cli(
     );
     if let Some(dir) = cwd {
         eprintln!("DEBUG: Working directory for scala-cli: {}", dir.display());
-    } else {
-        eprintln!("DEBUG: No working directory set for scala-cli");
     }
-    let mut cmd = Command::new(&scala_cli_path);
 
-    // 先添加子命令和参数
-    cmd.args(args);
-    // 然后添加 --jvm system 来使用系统JVM，避免下载
-    cmd.arg("--jvm").arg("system");
+    let mut cmd = Command::new(&scala_cli_path);
 
     if let Some(dir) = cwd {
         cmd.current_dir(dir);
         eprintln!("DEBUG: Working directory: {}", dir.display());
     }
 
+    // 添加其他参数
+    for arg in args {
+        cmd.arg(arg);
+    }
+
+    cmd.env("HOME", std::env::var("HOME").expect("HOME environment variable not set"));
+
     // 确保stdin是null，避免等待输入
     cmd.stdin(std::process::Stdio::null());
+    cmd.stdout(std::process::Stdio::piped());
+    cmd.stderr(std::process::Stdio::piped());
 
     eprintln!("DEBUG: About to execute cmd.output().await");
     let output = cmd.output().await?;
+    eprintln!(
+        "DEBUG: scala-cli stdout: {}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    eprintln!(
+        "DEBUG: scala-cli stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     eprintln!(
         "DEBUG: scala-cli command completed with status: {}",
         output.status

@@ -32,9 +32,9 @@ pub async fn cmd_test(cwd: &PathManager, file: Option<PathManager>) -> anyhow::R
 
     let deps = if let Some(ws_root) = workspace_root {
         let ws_proj = crate::config::loader::load_project(&ws_root)?;
-        crate::dependency::get_dependencies_with_workspace(&project, Some(&ws_proj))
+        crate::deps::get_dependencies_with_workspace(&project, Some(&ws_proj))
     } else {
-        crate::dependency::get_dependencies(&project)
+        crate::deps::get_dependencies(&project)
     };
 
     let test_target = if let Some(f) = file {

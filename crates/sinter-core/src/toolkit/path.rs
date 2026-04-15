@@ -1,5 +1,5 @@
 use crate::toolkit::os::PathWrapper;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 /// 统一的路径管理工具
 /// 提供一致的路径操作接口，避免直接使用 std::path::PathBuf 和 PathWrapper 的混乱

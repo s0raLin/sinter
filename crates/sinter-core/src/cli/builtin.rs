@@ -57,7 +57,7 @@ pub async fn execute_default(cwd: &PathManager) -> Result<()> {
         let project = loader::load_project(cwd).map_err(crate::error::utils::from_anyhow)?;
         let target = project.get_main_file_path();
         if cwd.join(&target).exists_sync() {
-            let deps = crate::dependency::get_dependencies(&project);
+            let deps = crate::deps::get_dependencies(&project);
             let output = run_single_file_with_deps(cwd, &target, &deps)
                 .await
                 .map_err(crate::error::utils::from_anyhow)?;
@@ -84,7 +84,7 @@ async fn execute_build(cwd: &PathManager) -> Result<()> {
             for member in members.iter() {
                 let member_dir = cwd.join(member.get_name());
                 let transitive_deps =
-                    crate::dependency::get_transitive_dependencies_with_workspace(
+                    crate::deps::get_transitive_dependencies_with_workspace(
                         &member,
                         Some(&root_project),
                         &member_dir,
@@ -135,7 +135,7 @@ async fn execute_build(cwd: &PathManager) -> Result<()> {
                     if let Some(member) = members.into_iter().find(|m| m.get_name() == member_name)
                     {
                         let transitive_deps =
-                            crate::dependency::get_transitive_dependencies_with_workspace(
+                            crate::deps::get_transitive_dependencies_with_workspace(
                                 &member,
                                 Some(&root_project),
                                 cwd,
@@ -165,7 +165,7 @@ async fn execute_build(cwd: &PathManager) -> Result<()> {
                 } else {
                     // Not in a workspace, treat as single project
                     let transitive_deps =
-                        crate::dependency::get_transitive_dependencies_with_workspace(
+                        crate::deps::get_transitive_dependencies_with_workspace(
                             &project, None, cwd,
                         )
                         .await?;
@@ -188,7 +188,7 @@ async fn execute_build(cwd: &PathManager) -> Result<()> {
             } else {
                 // Single project build
                 let transitive_deps =
-                    crate::dependency::get_transitive_dependencies_with_workspace(
+                    crate::deps::get_transitive_dependencies_with_workspace(
                         &project, None, cwd,
                     )
                     .await?;
@@ -258,9 +258,9 @@ async fn execute_run(
     // 获取依赖
     let deps = if let Some(ws_root) = workspace_root_ref {
         let ws_proj = crate::config::loader::load_project(ws_root)?;
-        crate::dependency::get_dependencies_with_workspace(&project, Some(&ws_proj))
+        crate::deps::get_dependencies_with_workspace(&project, Some(&ws_proj))
     } else {
-        crate::dependency::get_dependencies(&project)
+crate::deps::get_dependencies(&project)
     };
 
     // 设置 BSP 以支持 IDE
@@ -276,7 +276,7 @@ async fn execute_run(
 
             for member in members.iter() {
                 let member_dir = PathManager::from(ws_root_path).join(member.get_name());
-                let member_deps = crate::dependency::get_transitive_dependencies_with_workspace(
+                let member_deps = crate::deps::get_transitive_dependencies_with_workspace(
                     member,
                     Some(&crate::config::loader::load_project(ws_root_path)?),
                     member_dir.as_path(),
