@@ -1,6 +1,6 @@
 /// 检测Scala文件是否包含main方法
 pub fn has_main_method(content: &str) -> bool {
-    content.contains("def main(") || content.contains("extends App")
+    content.contains("def main(") || content.contains("extends App") || content.contains("@main")
 }
 
 #[derive(Debug, PartialEq)]

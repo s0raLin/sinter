@@ -44,28 +44,42 @@ impl DependencySpec {
                 if dep_str.trim().is_empty() {
                     errors.push("依赖字符串不能为空".to_string());
                 } else {
-                    // 严格的格式验证：group:artifact:version
-                    let parts: Vec<&str> = dep_str.split(':').collect();
-                    if parts.len() != 3 {
-                        errors.push(format!(
-                            "依赖格式无效 '{}'，应为 'group:artifact:version'",
-                            dep_str
-                        ));
-                    } else {
-                        // 检查每个部分不为空
-                        for (i, part) in parts.iter().enumerate() {
-                            if part.trim().is_empty() {
-                                let field = match i {
-                                    0 => "group",
-                                    1 => "artifact",
-                                    _ => "version",
-                                };
-                                errors.push(format!("依赖的{}部分不能为空", field));
-                            }
+                    // 如果 value 不包含冒号，说明是简写格式（key = version）
+                    // 完整坐标应该从 key 获取，这里先跳过验证
+                    if !dep_str.contains(':') {
+                        // 简写格式，验证将在解析时通过 coord() 处理
+                        // 这里只需要验证版本格式
+                        if !is_valid_version(dep_str) {
+                            errors.push(format!("依赖版本格式无效: '{}'", dep_str));
                         }
-                        // 版本格式检查
-                        if parts.len() == 3 && !is_valid_version(parts[2]) {
-                            errors.push(format!("依赖版本格式无效: '{}'", parts[2]));
+                    } else {
+                        // 支持两种格式：
+                        // 1. group:artifact:version (Java依赖)
+                        // 2. group:artifact_scala_version:version (Scala依赖，artifact可能包含_)
+                        let colon_count = dep_str.matches(':').count();
+                        if colon_count < 2 {
+                            errors.push(format!(
+                                "依赖格式无效 '{}'，应为 'group:artifact:version'",
+                                dep_str
+                            ));
+                        } else {
+                            // 找到最后一个冒号的位置来分离 version
+                            if let Some(last_colon_pos) = dep_str.rfind(':') {
+                                let version = &dep_str[last_colon_pos + 1..];
+                                let group_artifact = &dep_str[..last_colon_pos];
+
+                                // 检查 group 和 artifact 不为空
+                                if group_artifact.trim().is_empty() {
+                                    errors.push("依赖的 group:artifact 部分不能为空".to_string());
+                                }
+
+                                // 版本格式检查
+                                if !is_valid_version(version) {
+                                    errors.push(format!("依赖版本格式无效: '{}'", version));
+                                }
+                            } else {
+                                errors.push(format!("依赖格式无效 '{}'", dep_str));
+                            }
                         }
                     }
                 }
