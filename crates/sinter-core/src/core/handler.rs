@@ -35,4 +35,3 @@ pub trait CommandHandler: Send + Sync {
     /// 这是命令的核心逻辑，当用户运行命令时会被调用。
     async fn execute(&self, matches: &ArgMatches, cwd: &PathBuf) -> anyhow::Result<()>;
 }
-

@@ -1,12 +1,12 @@
 //! 项目配置模型和DTO
 
+use super::dependency::DependencySpec;
+use super::directory::Directory;
+use super::library::Library;
+use super::workspace::Workspace;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use super::dependency::DependencySpec;
-use super::workspace::Workspace;
-use super::directory::Directory;
-use super::library::Library;
 
 /// 项目配置
 #[derive(Debug, Clone)]
@@ -200,7 +200,11 @@ impl Project {
         // 验证目录路径
         let source_dir = self.get_source_directory();
         if let Err(dir_errors) = source_dir.validate() {
-            errors.extend(dir_errors.into_iter().map(|e| format!("源代码目录错误: {}", e)));
+            errors.extend(
+                dir_errors
+                    .into_iter()
+                    .map(|e| format!("源代码目录错误: {}", e)),
+            );
         }
 
         // 验证依赖
@@ -233,7 +237,9 @@ impl Project {
     pub fn to_dto(&self) -> ProjectDto {
         ProjectDto {
             package: self.package.to_dto(),
-            dependencies: self.dependencies.iter()
+            dependencies: self
+                .dependencies
+                .iter()
                 .map(|(k, v)| (k.clone(), v.to_dto()))
                 .collect(),
             workspace: self.workspace.as_ref().map(|ws| ws.to_dto()),
@@ -271,7 +277,11 @@ impl Package {
         // 验证后端
         let valid_backends = ["scala-cli", "sbt", "gradle", "maven"];
         if !valid_backends.contains(&self.backend.as_str()) {
-            errors.push(format!("不支持的后端: {}，支持的后端: {}", self.backend, valid_backends.join(", ")));
+            errors.push(format!(
+                "不支持的后端: {}，支持的后端: {}",
+                self.backend,
+                valid_backends.join(", ")
+            ));
         }
 
         if errors.is_empty() {
@@ -301,7 +311,9 @@ impl From<ProjectDto> for Project {
         Self {
             root_path: PathBuf::new(), // 需要外部设置
             package: dto.package.into(),
-            dependencies: dto.dependencies.into_iter()
+            dependencies: dto
+                .dependencies
+                .into_iter()
                 .map(|(k, v)| (k, v.into()))
                 .collect(),
             workspace: dto.workspace.map(|ws| ws.into()),

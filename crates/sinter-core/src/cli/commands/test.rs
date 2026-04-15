@@ -51,7 +51,10 @@ pub async fn cmd_test(cwd: &PathManager, file: Option<PathManager>) -> anyhow::R
     }
 
     // Use scala-cli test
-    let mut args: Vec<String> = vec!["test".to_string(), abs_test_target.to_string_lossy().to_string()];
+    let mut args: Vec<String> = vec![
+        "test".to_string(),
+        abs_test_target.to_string_lossy().to_string(),
+    ];
 
     for dep in deps {
         args.push("--dependency".to_string());

@@ -2,9 +2,9 @@
 //!
 //! 提供IDE集成功能
 
-pub mod classpath_generator;
 pub mod bsp_setup;
+pub mod classpath_generator;
 
 // Re-export for convenience
-pub use classpath_generator::*;
 pub use bsp_setup::*;
+pub use classpath_generator::*;

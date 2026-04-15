@@ -38,7 +38,6 @@ pub mod toolkit;
 // 错误处理
 pub mod error;
 
-
 // 公共 API
-pub use core::{CommandHandler, Sinter};
 pub use cli::{Cli, Commands, WorkspaceCommands};
+pub use core::{CommandHandler, Sinter};

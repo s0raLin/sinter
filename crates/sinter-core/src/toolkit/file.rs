@@ -1,4 +1,4 @@
-use crate::toolkit::os::{PathWrapper, make_dir_all, write};
+use crate::toolkit::os::{make_dir_all, write, PathWrapper};
 use std::path::Path;
 
 /// Create a directory structure and write files
@@ -21,12 +21,21 @@ impl ProjectCreator {
         Ok(())
     }
 
-    pub async fn write_file(&self, relative_path: &str, content: &str) -> Result<(), std::io::Error> {
+    pub async fn write_file(
+        &self,
+        relative_path: &str,
+        content: &str,
+    ) -> Result<(), std::io::Error> {
         let path = self.base_path.join(relative_path);
         write(&path, content).await
     }
 
-    pub async fn write_template_file(&self, relative_path: &str, template: &str, replacements: &std::collections::HashMap<&str, &str>) -> Result<(), std::io::Error> {
+    pub async fn write_template_file(
+        &self,
+        relative_path: &str,
+        template: &str,
+        replacements: &std::collections::HashMap<&str, &str>,
+    ) -> Result<(), std::io::Error> {
         let mut content = template.to_string();
         for (key, value) in replacements {
             content = content.replace(&format!("{{{}}}", key), value);
@@ -36,7 +45,10 @@ impl ProjectCreator {
 }
 
 /// Utility for downloading files
-pub async fn download_file(url: &str, dest_path: &PathWrapper) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn download_file(
+    url: &str,
+    dest_path: &PathWrapper,
+) -> Result<(), Box<dyn std::error::Error>> {
     let response = reqwest::get(url).await?;
     let bytes = response.bytes().await?;
     write(dest_path, std::str::from_utf8(&bytes)?).await?;

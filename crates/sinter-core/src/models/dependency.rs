@@ -47,7 +47,10 @@ impl DependencySpec {
                     // 严格的格式验证：group:artifact:version
                     let parts: Vec<&str> = dep_str.split(':').collect();
                     if parts.len() != 3 {
-                        errors.push(format!("依赖格式无效 '{}'，应为 'group:artifact:version'", dep_str));
+                        errors.push(format!(
+                            "依赖格式无效 '{}'，应为 'group:artifact:version'",
+                            dep_str
+                        ));
                     } else {
                         // 检查每个部分不为空
                         for (i, part) in parts.iter().enumerate() {
@@ -146,6 +149,8 @@ impl From<DependencySpec> for DependencyDto {
 /// 验证版本字符串格式
 fn is_valid_version(version: &str) -> bool {
     // 简单的版本格式检查：允许数字、点、横线、下划线
-    !version.is_empty() &&
-    version.chars().all(|c| c.is_alphanumeric() || c == '.' || c == '-' || c == '_')
+    !version.is_empty()
+        && version
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '.' || c == '-' || c == '_')
 }

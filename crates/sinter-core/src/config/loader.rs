@@ -2,9 +2,9 @@
 //!
 //! 负责从文件系统加载和解析配置文件
 
-use std::path::{Path, PathBuf};
 use anyhow::Context;
 use config::Config;
+use std::path::{Path, PathBuf};
 
 use crate::models::*;
 
@@ -15,12 +15,14 @@ pub fn load_project(dir: &Path) -> anyhow::Result<Project> {
         .add_source(config::File::from(manifest_path))
         .build()
         .context("Failed to load project configuration")?;
-    let proj_dto: ProjectDto = settings.try_deserialize()
+    let proj_dto: ProjectDto = settings
+        .try_deserialize()
         .context("Failed to parse project configuration")?;
     let mut proj: Project = proj_dto.into();
 
     // 设置项目根路径，映射到实际目录
-    proj.root_path = dir.canonicalize()
+    proj.root_path = dir
+        .canonicalize()
         .context("Failed to canonicalize project directory path")?;
 
     // 验证配置
@@ -76,17 +78,20 @@ pub fn load_workspace(dir: &Path) -> anyhow::Result<Option<(Project, Vec<Project
         .build()
         .context("Failed to load workspace configuration")?;
 
-    let root_project_dto: ProjectDto = settings.try_deserialize()
+    let root_project_dto: ProjectDto = settings
+        .try_deserialize()
         .context("Failed to parse workspace configuration")?;
     let mut root_project: Project = root_project_dto.into();
 
     // 设置项目根路径
-    root_project.root_path = dir.canonicalize()
+    root_project.root_path = dir
+        .canonicalize()
         .context("Failed to canonicalize workspace directory path")?;
 
     if let Some(workspace) = &mut root_project.workspace {
         // 设置工作区根路径，映射到实际目录
-        workspace.root_path = dir.canonicalize()
+        workspace.root_path = dir
+            .canonicalize()
             .context("Failed to canonicalize workspace directory path")?;
 
         let mut members = Vec::new();

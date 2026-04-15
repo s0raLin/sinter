@@ -12,13 +12,21 @@ impl MemberManager {
     }
 
     /// 添加工作空间成员
-    pub fn add_member(&self, workspace_path: &std::path::Path, member_path: &str) -> anyhow::Result<()> {
+    pub fn add_member(
+        &self,
+        workspace_path: &std::path::Path,
+        member_path: &str,
+    ) -> anyhow::Result<()> {
         // TODO: 实现添加成员逻辑
         Ok(())
     }
 
     /// 移除工作空间成员
-    pub fn remove_member(&self, workspace_path: &std::path::Path, member_path: &str) -> anyhow::Result<()> {
+    pub fn remove_member(
+        &self,
+        workspace_path: &std::path::Path,
+        member_path: &str,
+    ) -> anyhow::Result<()> {
         // TODO: 实现移除成员逻辑
         Ok(())
     }

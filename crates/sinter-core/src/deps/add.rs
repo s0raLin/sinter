@@ -33,7 +33,8 @@ pub async fn add_dependency(project_dir: &Path, dep_spec: &str) -> anyhow::Resul
         return Ok(());
     }
 
-    let (artifact, scala_ver, version) = parse_dep_spec(dep_spec, &project.package.scala_version).await?;
+    let (artifact, scala_ver, version) =
+        parse_dep_spec(dep_spec, &project.package.scala_version).await?;
 
     let key = artifact.clone();
 
@@ -48,23 +49,34 @@ pub async fn add_dependency(project_dir: &Path, dep_spec: &str) -> anyhow::Resul
     };
 
     // 使用依赖管理器验证依赖是否可用
-    let dep_manager = crate::deps::default_dependency_manager().await;
+    let dep_manager = crate::deps::default_dependency_manager();
     let dep = crate::deps::deps::Dependency::from_toml_key(&full_key, &version);
-    
+
     // 验证依赖是否可用
     if let Err(e) = dep_manager.validate_dependency(&dep).await {
         anyhow::bail!("Failed to validate dependency {}: {}\nPlease check that the dependency coordinates are correct and the version exists.", full_key, e);
     }
 
     // 如果验证通过，下载依赖（使用coursier时会预先下载并缓存）
-    if let Err(e) = dep_manager.prepare_dependencies(&[dep.clone()], &project_dir.join("target")).await {
+    if let Err(e) = dep_manager
+        .prepare_dependencies(&[dep.clone()], &project_dir.join("target"))
+        .await
+    {
         anyhow::bail!("Failed to download dependency {}: {}\nPlease check your network connection and try again.", full_key, e);
     }
 
     // 如果在工作空间根目录，添加到 workspace.dependencies
     if is_workspace_root {
-        crate::config::writer::add_workspace_dependency_to_manifest(&manifest_path, &full_key, &version)?;
-        println!("已添加依赖: {} = {}", full_key, format!("{} (workspace)", version));
+        crate::config::writer::add_workspace_dependency_to_manifest(
+            &manifest_path,
+            &full_key,
+            &version,
+        )?;
+        println!(
+            "已添加依赖: {} = {}",
+            full_key,
+            format!("{} (workspace)", version)
+        );
     } else {
         crate::config::writer::add_dependency_to_manifest(&manifest_path, &full_key, &version)?;
         println!("已添加依赖: {} = {}", full_key, version);
@@ -72,8 +84,10 @@ pub async fn add_dependency(project_dir: &Path, dep_spec: &str) -> anyhow::Resul
     Ok(())
 }
 
-
-async fn parse_dep_spec(spec: &str, default_scala_version: &str) -> anyhow::Result<(String, String, String)> {
+async fn parse_dep_spec(
+    spec: &str,
+    default_scala_version: &str,
+) -> anyhow::Result<(String, String, String)> {
     // 检查是否是Scala依赖（使用::）还是Java依赖（使用:）
     let is_scala_format = spec.contains("::");
 
@@ -110,7 +124,10 @@ async fn parse_dep_spec(spec: &str, default_scala_version: &str) -> anyhow::Resu
 
     // 检查artifact是否包含::，如果是，则报错，因为artifact不应该有::
     if artifact_with_scala.contains("::") {
-        anyhow::bail!("{}", "依赖格式无效，artifact 不应包含 '::', 请使用 group:artifact:version 格式");
+        anyhow::bail!(
+            "{}",
+            "依赖格式无效，artifact 不应包含 '::', 请使用 group:artifact:version 格式"
+        );
     }
 
     let artifact_parts: Vec<&str> = artifact_with_scala.split('@').collect();

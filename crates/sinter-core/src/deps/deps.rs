@@ -17,7 +17,9 @@ pub enum Dependency {
 impl Dependency {
     pub fn from_toml_key(key: &str, version: &str) -> Self {
         // Check if it's an sbt path (starts with sbt: or is a relative path)
-        if key.starts_with("sbt:") || (key.contains("/") && !key.contains("::") && !key.contains(":")) {
+        if key.starts_with("sbt:")
+            || (key.contains("/") && !key.contains("::") && !key.contains(":"))
+        {
             let path = if key.starts_with("sbt:") {
                 key[4..].to_string()
             } else {
@@ -52,7 +54,12 @@ impl Dependency {
     // 生成 Maven 坐标：group:artifact:version 或 group::artifact:version 或 sbt 路径
     pub fn coord(&self) -> String {
         match self {
-            Dependency::Maven { group, artifact, version, is_scala } => {
+            Dependency::Maven {
+                group,
+                artifact,
+                version,
+                is_scala,
+            } => {
                 if *is_scala {
                     format!("{}::{}:{}", group, artifact, version)
                 } else {
@@ -76,4 +83,3 @@ impl Dependency {
         }
     }
 }
-

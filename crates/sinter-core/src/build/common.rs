@@ -5,8 +5,8 @@ pub fn has_main_method(content: &str) -> bool {
 
 #[derive(Debug, PartialEq)]
 pub enum RunMode {
-    App,   // 有 main 或 extends App
-    Lib,   // 无入口 -> 只编译
+    App, // 有 main 或 extends App
+    Lib, // 无入口 -> 只编译
 }
 
 pub struct RunResult {

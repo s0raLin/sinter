@@ -1,6 +1,6 @@
 use crate::toolkit::file::ProjectCreator;
-use crate::toolkit::template::Template;
 use crate::toolkit::path::PathManager;
+use crate::toolkit::template::Template;
 
 pub async fn cmd_new(cwd: &PathManager, name: &str) -> anyhow::Result<()> {
     let proj_dir = cwd.join(name);
@@ -22,12 +22,15 @@ pub async fn cmd_new(cwd: &PathManager, name: &str) -> anyhow::Result<()> {
     // Hello world
     let main_template_path = crate::toolkit::path::paths::main_template();
     let code = main_template_path.read_sync()?;
-    creator.write_file("src/main/scala/Main.scala", &code).await?;
+    creator
+        .write_file("src/main/scala/Main.scala", &code)
+        .await?;
 
     // Auto-add to workspace if in one
     if let Some(workspace_root) = crate::config::loader::find_workspace_root(cwd) {
         let manifest_path = workspace_root.join("project.toml");
-        let relative_path = proj_dir.strip_prefix(&workspace_root)
+        let relative_path = proj_dir
+            .strip_prefix(&workspace_root)
             .unwrap_or(&proj_dir)
             .to_string_lossy()
             .to_string();

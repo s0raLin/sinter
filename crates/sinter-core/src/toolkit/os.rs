@@ -77,11 +77,17 @@ pub async fn exists(path: &PathWrapper) -> bool {
 }
 
 pub async fn is_file(path: &PathWrapper) -> bool {
-    fs::metadata(&path.0).await.map(|m| m.is_file()).unwrap_or(false)
+    fs::metadata(&path.0)
+        .await
+        .map(|m| m.is_file())
+        .unwrap_or(false)
 }
 
 pub async fn is_dir(path: &PathWrapper) -> bool {
-    fs::metadata(&path.0).await.map(|m| m.is_dir()).unwrap_or(false)
+    fs::metadata(&path.0)
+        .await
+        .map(|m| m.is_dir())
+        .unwrap_or(false)
 }
 
 pub async fn size(path: &PathWrapper) -> Result<u64, std::io::Error> {

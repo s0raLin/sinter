@@ -2,8 +2,8 @@
 //!
 //! 负责将解析后的 CLI 命令分发到对应的处理器
 
+use crate::cli::{builtin, Cli};
 use crate::core::handler::CommandHandler;
-use crate::cli::{Cli, builtin};
 use crate::toolkit::path::PathManager;
 
 /// 命令执行器
@@ -43,4 +43,3 @@ impl Executor {
         Ok(())
     }
 }
-

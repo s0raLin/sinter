@@ -1,17 +1,14 @@
 // src/cli/commands/mod.rs
-pub mod new;
 pub mod init;
+pub mod new;
 pub mod test;
 pub mod workspace;
 
-
 // 导出命令函数
-pub use new::cmd_new;
 pub use init::cmd_init;
+pub use new::cmd_new;
 pub use test::cmd_test;
 pub use workspace::cmd_workspace;
-
-
 
 /// 极致简化的命令定义宏
 #[macro_export]
@@ -29,12 +26,16 @@ macro_rules! plugin_command {
                 $about
             }
 
-            async fn execute(&self, matches: &clap::ArgMatches, cwd: &std::path::PathBuf) -> anyhow::Result<()> {
+            async fn execute(
+                &self,
+                matches: &clap::ArgMatches,
+                cwd: &std::path::PathBuf,
+            ) -> anyhow::Result<()> {
                 $body
             }
         }
 
-            inventory::submit! {
+        inventory::submit! {
             Box::new($name) as Box<dyn crate::core::CommandHandler>
         }
     };

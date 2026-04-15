@@ -1,4 +1,4 @@
-use crate::toolkit::path::{PathManager, paths};
+use crate::toolkit::path::{paths, PathManager};
 
 pub async fn cmd_init(cwd: &PathManager) -> anyhow::Result<()> {
     // Check if project.toml already exists

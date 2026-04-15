@@ -1,5 +1,5 @@
-use std::path::{Path, PathBuf, Component};
 use crate::toolkit::os::PathWrapper;
+use std::path::{Component, Path, PathBuf};
 
 /// 统一的路径管理工具
 /// 提供一致的路径操作接口，避免直接使用 std::path::PathBuf 和 PathWrapper 的混乱
@@ -263,8 +263,7 @@ pub mod paths {
 
     /// 获取插件模板目录
     pub fn plugin_templates_dir() -> PathManager {
-        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
-            .unwrap_or_else(|_| ".".to_string());
+        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
         PathManager::new(manifest_dir).join("../sinter-plugins/templates")
     }
 
@@ -303,7 +302,8 @@ pub mod validation {
             }
         }
 
-        let normalized_path = normalized.iter()
+        let normalized_path = normalized
+            .iter()
             .fold(std::path::PathBuf::new(), |mut acc, comp| {
                 acc.push(comp);
                 acc

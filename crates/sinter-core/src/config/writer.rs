@@ -2,13 +2,17 @@
 //!
 //! 负责修改和写入配置文件
 
-use std::path::Path;
+use crate::toolkit::os::{read_sync, write_sync, PathWrapper};
 use anyhow::Context;
+use std::path::Path;
 use toml_edit::{value, DocumentMut, Item, Table};
-use crate::toolkit::os::{PathWrapper, read_sync, write_sync};
 
 /// 向项目manifest添加依赖
-pub fn add_dependency_to_manifest(manifest_path: &Path, key: &str, version: &str) -> anyhow::Result<()> {
+pub fn add_dependency_to_manifest(
+    manifest_path: &Path,
+    key: &str,
+    version: &str,
+) -> anyhow::Result<()> {
     modify_toml_document(manifest_path, |doc| {
         // 确保 dependencies 表存在
         ensure_table_exists(doc, "dependencies");
@@ -23,7 +27,11 @@ pub fn add_dependency_to_manifest(manifest_path: &Path, key: &str, version: &str
 }
 
 /// 向工作空间manifest添加依赖
-pub fn add_workspace_dependency_to_manifest(manifest_path: &Path, key: &str, version: &str) -> anyhow::Result<()> {
+pub fn add_workspace_dependency_to_manifest(
+    manifest_path: &Path,
+    key: &str,
+    version: &str,
+) -> anyhow::Result<()> {
     modify_toml_document(manifest_path, |doc| {
         // 确保 workspace 表存在
         ensure_table_exists(doc, "workspace");
@@ -54,13 +62,18 @@ pub fn add_workspace_member(manifest_path: &Path, member_path: &str) -> anyhow::
         if let Some(ws_table) = ws_item.as_table_mut() {
             // 确保 members 数组存在
             if !ws_table.contains_key("members") {
-                ws_table.insert("members", Item::Value(toml_edit::Value::Array(Default::default())));
+                ws_table.insert(
+                    "members",
+                    Item::Value(toml_edit::Value::Array(Default::default())),
+                );
             }
 
             if let Some(members_item) = ws_table.get_mut("members") {
                 if let Some(members_array) = members_item.as_array_mut() {
                     // 检查成员是否已存在
-                    let exists = members_array.iter().any(|v| v.as_str() == Some(member_path));
+                    let exists = members_array
+                        .iter()
+                        .any(|v| v.as_str() == Some(member_path));
                     if exists {
                         anyhow::bail!("Member '{}' already exists in workspace", member_path);
                     }
@@ -81,9 +94,7 @@ where
     let content = read_sync(&path_wrapper)
         .with_context(|| format!("Failed to read file: {}", manifest_path.display()))?;
 
-    let mut doc: DocumentMut = content
-        .parse()
-        .context("Failed to parse TOML document")?;
+    let mut doc: DocumentMut = content.parse().context("Failed to parse TOML document")?;
 
     modifier(&mut doc)?;
 

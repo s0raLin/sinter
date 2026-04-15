@@ -2,8 +2,8 @@
 //!
 //! 使用函数式 Builder 模式构建应用，支持链式注册插件
 
-use crate::core::handler::CommandHandler;
 use crate::cli::Cli;
+use crate::core::handler::CommandHandler;
 use crate::runtime::Executor;
 use crate::toolkit::path::PathManager;
 
@@ -66,4 +66,3 @@ impl Default for Sinter {
         Self::new()
     }
 }
-

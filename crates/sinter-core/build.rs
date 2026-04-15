@@ -16,10 +16,20 @@ fn download_coursier() {
     let bin_dir = Path::new(&manifest_dir).join("bin");
     fs::create_dir_all(&bin_dir).ok();
 
-    let exe_name = if cfg!(target_os = "windows") { "coursier.exe" } else { "coursier" };
+    let exe_name = if cfg!(target_os = "windows") {
+        "coursier.exe"
+    } else {
+        "coursier"
+    };
     let coursier_path = bin_dir.join(exe_name);
 
-    if coursier_path.exists() && Command::new(&coursier_path).arg("--version").output().map(|o| o.status.success()).unwrap_or(false) {
+    if coursier_path.exists()
+        && Command::new(&coursier_path)
+            .arg("--version")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    {
         println!("cargo:warning=coursier already exists");
         return;
     }
@@ -32,8 +42,17 @@ fn download_coursier() {
         _ => return,
     };
 
-    let url = format!("https://github.com/coursier/coursier/releases/latest/download/cs-{}.gz", platform);
-    Command::new("sh").args(&["-c", &format!("curl -fL {} | gzip -d > {}", url, coursier_path.display())]).status().ok();
+    let url = format!(
+        "https://github.com/coursier/coursier/releases/latest/download/cs-{}.gz",
+        platform
+    );
+    Command::new("sh")
+        .args(&[
+            "-c",
+            &format!("curl -fL {} | gzip -d > {}", url, coursier_path.display()),
+        ])
+        .status()
+        .ok();
 
     #[cfg(unix)]
     {
@@ -43,7 +62,13 @@ fn download_coursier() {
 
     // 拷贝到target/bin
     let binding = env::var("OUT_DIR").unwrap();
-    let out_dir = Path::new(&binding).parent().unwrap().parent().unwrap().parent().unwrap();
+    let out_dir = Path::new(&binding)
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap();
     let target_bin_dir = out_dir.join("bin");
     fs::create_dir_all(&target_bin_dir).ok();
     let target_path = target_bin_dir.join(exe_name);

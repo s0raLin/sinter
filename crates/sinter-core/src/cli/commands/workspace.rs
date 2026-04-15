@@ -1,7 +1,10 @@
 use crate::cli::WorkspaceCommands;
 use crate::toolkit::path::PathManager;
 
-pub async fn cmd_workspace(cwd: &PathManager, subcommand: &WorkspaceCommands) -> anyhow::Result<()> {
+pub async fn cmd_workspace(
+    cwd: &PathManager,
+    subcommand: &WorkspaceCommands,
+) -> anyhow::Result<()> {
     match subcommand {
         WorkspaceCommands::Add { paths } => {
             cmd_workspace_add(cwd, paths).await?;

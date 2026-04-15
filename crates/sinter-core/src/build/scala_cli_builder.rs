@@ -1,8 +1,8 @@
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use tokio::process::Command;
 use tokio::fs;
-use std::os::unix::fs::PermissionsExt;
+use tokio::process::Command;
 
 static SCALA_CLI_WARNING_PRINTED: AtomicBool = AtomicBool::new(false);
 
@@ -70,7 +70,12 @@ pub async fn get_scala_cli_path() -> Option<String> {
             // 验证打包的scala-cli是否可用
             let mut cmd = Command::new(path_str);
             cmd.arg("--version");
-            if cmd.output().await.map(|o| o.status.success()).unwrap_or(false) {
+            if cmd
+                .output()
+                .await
+                .map(|o| o.status.success())
+                .unwrap_or(false)
+            {
                 return Some(path_str.to_string());
             }
         }
@@ -137,11 +142,18 @@ pub async fn download_scala_cli() -> anyhow::Result<()> {
 }
 
 /// 执行scala-cli命令
-pub async fn run_scala_cli(args: &[&str], cwd: Option<&std::path::Path>) -> anyhow::Result<std::process::Output> {
-    let scala_cli_path = get_scala_cli_path().await
+pub async fn run_scala_cli(
+    args: &[&str],
+    cwd: Option<&std::path::Path>,
+) -> anyhow::Result<std::process::Output> {
+    let scala_cli_path = get_scala_cli_path()
+        .await
         .ok_or_else(|| anyhow::anyhow!("scala-cli is not available"))?;
 
-    eprintln!("DEBUG: Running scala-cli command: {} {:?}", scala_cli_path, args);
+    eprintln!(
+        "DEBUG: Running scala-cli command: {} {:?}",
+        scala_cli_path, args
+    );
     if let Some(dir) = cwd {
         eprintln!("DEBUG: Working directory for scala-cli: {}", dir.display());
     } else {
@@ -164,12 +176,18 @@ pub async fn run_scala_cli(args: &[&str], cwd: Option<&std::path::Path>) -> anyh
 
     eprintln!("DEBUG: About to execute cmd.output().await");
     let output = cmd.output().await?;
-    eprintln!("DEBUG: scala-cli command completed with status: {}", output.status);
+    eprintln!(
+        "DEBUG: scala-cli command completed with status: {}",
+        output.status
+    );
     Ok(output)
 }
 
 /// 执行scala-cli命令并返回结果
-pub async fn execute_scala_cli(args: &[&str], cwd: Option<&std::path::Path>) -> anyhow::Result<String> {
+pub async fn execute_scala_cli(
+    args: &[&str],
+    cwd: Option<&std::path::Path>,
+) -> anyhow::Result<String> {
     let output = run_scala_cli(args, cwd).await?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);

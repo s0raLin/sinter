@@ -2,16 +2,19 @@
 //!
 //! 包含所有内置命令的执行逻辑
 
-use crate::cli::{Commands, commands::{cmd_test, cmd_workspace}};
 use crate::build::{run_scala_file, run_single_file_with_deps};
-use crate::ide::setup_bsp;
-use crate::deps::add_dependency;
-use crate::toolkit::path::PathManager;
+use crate::cli::{
+    commands::{cmd_test, cmd_workspace},
+    Commands,
+};
 use crate::config::loader;
-use crate::error::{Result, utils};
+use crate::deps::add_dependency;
+use crate::error::{utils, Result};
+use crate::ide::setup_bsp;
 use crate::toolkit::file::ProjectCreator;
-use crate::toolkit::template::Template;
 use crate::toolkit::path::paths;
+use crate::toolkit::path::PathManager;
+use crate::toolkit::template::Template;
 
 /// 执行内置命令
 pub async fn execute_command(command: Commands, cwd: &PathManager) -> Result<()> {
@@ -39,9 +42,10 @@ pub async fn execute_command(command: Commands, cwd: &PathManager) -> Result<()>
         }
         Commands::Jsp { name } => {
             // JSP 命令应该由插件系统处理
-            return Err(crate::error::utils::single_validation_error(
-                format!("JSP command '{}' requires the JSP plugin to be loaded", name)
-            ));
+            return Err(crate::error::utils::single_validation_error(format!(
+                "JSP command '{}' requires the JSP plugin to be loaded",
+                name
+            )));
         }
     }
     Ok(())
@@ -50,20 +54,16 @@ pub async fn execute_command(command: Commands, cwd: &PathManager) -> Result<()>
 /// 执行默认行为（无命令时）
 pub async fn execute_default(cwd: &PathManager) -> Result<()> {
     if cwd.join("project.toml").exists_sync() {
-
-        let project = loader::load_project(cwd)
-            .map_err(crate::error::utils::from_anyhow)?;
+        let project = loader::load_project(cwd).map_err(crate::error::utils::from_anyhow)?;
         let target = project.get_main_file_path();
         if cwd.join(&target).exists_sync() {
             let deps = crate::dependency::get_dependencies(&project);
-            let output = run_single_file_with_deps(cwd, &target, &deps).await
+            let output = run_single_file_with_deps(cwd, &target, &deps)
+                .await
                 .map_err(crate::error::utils::from_anyhow)?;
             println!("{}", output);
         } else {
-            println!(
-                "{}",
-format!("未找到主文件: {}", target.display())
-            );
+            println!("{}", format!("未找到主文件: {}", target.display()));
         }
     } else {
         println!("{}", "未提供命令。使用 --help 获取用法。");
@@ -76,23 +76,31 @@ async fn execute_build(cwd: &PathManager) -> Result<()> {
     if let Ok(project) = loader::load_project(cwd) {
         if project.workspace.is_some() {
             // Workspace build - build all members
-            let (root_project, members) = loader::load_workspace(cwd)?.ok_or_else(|| anyhow::anyhow!("Failed to load workspace configuration"))?;
+            let (root_project, members) = loader::load_workspace(cwd)?
+                .ok_or_else(|| anyhow::anyhow!("Failed to load workspace configuration"))?;
             let mut all_deps = Vec::new();
             let mut source_dirs = Vec::new();
             let mut backend = None;
             for member in members.iter() {
                 let member_dir = cwd.join(member.get_name());
-                let transitive_deps = crate::dependency::get_transitive_dependencies_with_workspace(&member, Some(&root_project), &member_dir).await?;
+                let transitive_deps =
+                    crate::dependency::get_transitive_dependencies_with_workspace(
+                        &member,
+                        Some(&root_project),
+                        &member_dir,
+                    )
+                    .await?;
                 all_deps.extend(transitive_deps.clone());
-                source_dirs.push((member.get_name().to_string(), member.get_source_dir().to_string()));
+                source_dirs.push((
+                    member.get_name().to_string(),
+                    member.get_source_dir().to_string(),
+                ));
                 if backend.is_none() {
                     backend = Some(member.get_backend().to_string());
                 }
                 // For workspace builds, use target directory relative to workspace root
-                let workspace_target_dir = format!(
-                    "{}/{}",
-                    root_project.get_target_dir(), member.get_name()
-                );
+                let workspace_target_dir =
+                    format!("{}/{}", root_project.get_target_dir(), member.get_name());
                 crate::build::build_with_deps(
                     &member_dir,
                     &transitive_deps,
@@ -101,7 +109,7 @@ async fn execute_build(cwd: &PathManager) -> Result<()> {
                     member.get_backend(),
                     Some(cwd),
                     false, // Do not setup BSP for each member
-                    true, // is_workspace_build
+                    true,  // is_workspace_build
                 )
                 .await?;
                 println!("{}", format!("已构建成员: {}", member.get_name()));
@@ -116,12 +124,23 @@ async fn execute_build(cwd: &PathManager) -> Result<()> {
             if let Some(workspace_root) = crate::config::loader::find_workspace_root(cwd) {
                 // Build single member in workspace
                 if let Some((root_project, members)) = loader::load_workspace(&workspace_root)? {
-                    let relative_path = cwd.strip_prefix(&workspace_root).map_err(|_| anyhow::anyhow!("Invalid workspace structure"))?;
-                    let member_name = relative_path.components().next()
+                    let relative_path = cwd
+                        .strip_prefix(&workspace_root)
+                        .map_err(|_| anyhow::anyhow!("Invalid workspace structure"))?;
+                    let member_name = relative_path
+                        .components()
+                        .next()
                         .and_then(|c| c.as_os_str().to_str())
                         .ok_or_else(|| anyhow::anyhow!("Cannot determine member name from path"))?;
-                    if let Some(member) = members.into_iter().find(|m| m.get_name() == member_name) {
-                        let transitive_deps = crate::dependency::get_transitive_dependencies_with_workspace(&member, Some(&root_project), cwd).await?;
+                    if let Some(member) = members.into_iter().find(|m| m.get_name() == member_name)
+                    {
+                        let transitive_deps =
+                            crate::dependency::get_transitive_dependencies_with_workspace(
+                                &member,
+                                Some(&root_project),
+                                cwd,
+                            )
+                            .await?;
                         crate::build::build_with_deps(
                             cwd,
                             &transitive_deps,
@@ -138,13 +157,18 @@ async fn execute_build(cwd: &PathManager) -> Result<()> {
                             format!("构建成功，包含 {} 个依赖", transitive_deps.len())
                         );
                     } else {
-                        return Err(crate::error::utils::single_validation_error(
-                            format!("Member {} not found in workspace", member_name)
-                        ));
+                        return Err(crate::error::utils::single_validation_error(format!(
+                            "Member {} not found in workspace",
+                            member_name
+                        )));
                     }
                 } else {
                     // Not in a workspace, treat as single project
-                    let transitive_deps = crate::dependency::get_transitive_dependencies_with_workspace(&project, None, cwd).await?;
+                    let transitive_deps =
+                        crate::dependency::get_transitive_dependencies_with_workspace(
+                            &project, None, cwd,
+                        )
+                        .await?;
                     crate::build::build_with_deps(
                         cwd,
                         &transitive_deps,
@@ -152,7 +176,7 @@ async fn execute_build(cwd: &PathManager) -> Result<()> {
                         project.get_target_dir(),
                         project.get_backend(),
                         None,
-                        true, // Setup BSP for IDE support
+                        true,  // Setup BSP for IDE support
                         false, // not workspace build
                     )
                     .await?;
@@ -163,7 +187,11 @@ async fn execute_build(cwd: &PathManager) -> Result<()> {
                 }
             } else {
                 // Single project build
-                let transitive_deps = crate::dependency::get_transitive_dependencies_with_workspace(&project, None, cwd).await?;
+                let transitive_deps =
+                    crate::dependency::get_transitive_dependencies_with_workspace(
+                        &project, None, cwd,
+                    )
+                    .await?;
                 crate::build::build_with_deps(
                     cwd,
                     &transitive_deps,
@@ -171,7 +199,7 @@ async fn execute_build(cwd: &PathManager) -> Result<()> {
                     project.get_target_dir(),
                     project.get_backend(),
                     None,
-                    true, // Setup BSP for IDE support
+                    true,  // Setup BSP for IDE support
                     false, // not workspace build
                 )
                 .await?;
@@ -182,15 +210,20 @@ async fn execute_build(cwd: &PathManager) -> Result<()> {
             }
         }
     } else {
-        return Err(crate::error::utils::single_validation_error(
-            format!("No project.toml found in {}", cwd.display())
-        ));
+        return Err(crate::error::utils::single_validation_error(format!(
+            "No project.toml found in {}",
+            cwd.display()
+        )));
     }
     Ok(())
 }
 
 /// 执行运行命令
-async fn execute_run(cwd: &PathManager, file: Option<PathManager>, lib: bool) -> anyhow::Result<()> {
+async fn execute_run(
+    cwd: &PathManager,
+    file: Option<PathManager>,
+    lib: bool,
+) -> anyhow::Result<()> {
     let workspace_root = crate::config::loader::find_workspace_root(cwd);
     let workspace_root_ref = workspace_root.as_ref();
 
@@ -199,13 +232,13 @@ async fn execute_run(cwd: &PathManager, file: Option<PathManager>, lib: bool) ->
         // 在 workspace 中，查找成员项目
         if let Some((_ws_proj, members)) = crate::config::loader::load_workspace(ws_root)? {
             let relative_path = cwd.relative_to(&PathManager::from(ws_root.clone()));
-            let member_name = relative_path.as_path().components().next()
+            let member_name = relative_path
+                .as_path()
+                .components()
+                .next()
                 .and_then(|c| c.as_os_str().to_str())
                 .ok_or_else(|| anyhow::anyhow!("Cannot determine member name from path"))?;
-            if let Some(member) = members
-                .into_iter()
-                .find(|m| m.package.name == member_name)
-            {
+            if let Some(member) = members.into_iter().find(|m| m.package.name == member_name) {
                 (member, PathManager::from(ws_root.clone()).join(member_name))
             } else {
                 // 不是成员，作为单个项目处理
@@ -240,35 +273,54 @@ async fn execute_run(cwd: &PathManager, file: Option<PathManager>, lib: bool) ->
             let mut ws_source_dirs = Vec::new();
             let mut ws_all_deps = Vec::new();
             let mut ws_backend = None;
-            
+
             for member in members.iter() {
                 let member_dir = PathManager::from(ws_root_path).join(member.get_name());
                 let member_deps = crate::dependency::get_transitive_dependencies_with_workspace(
-                    member, 
-                    Some(&crate::config::loader::load_project(ws_root_path)?), 
-                    member_dir.as_path()
-                ).await?;
+                    member,
+                    Some(&crate::config::loader::load_project(ws_root_path)?),
+                    member_dir.as_path(),
+                )
+                .await?;
                 ws_all_deps.extend(member_deps);
-                ws_source_dirs.push((member.get_name().to_string(), member.get_source_dir().to_string()));
+                ws_source_dirs.push((
+                    member.get_name().to_string(),
+                    member.get_source_dir().to_string(),
+                ));
                 if ws_backend.is_none() {
                     ws_backend = Some(member.get_backend().to_string());
                 }
             }
-            
-            (PathManager::from(ws_root_path), ws_source_dirs, ws_all_deps, ws_backend.unwrap_or_else(|| project.get_backend().to_string()))
+
+            (
+                PathManager::from(ws_root_path),
+                ws_source_dirs,
+                ws_all_deps,
+                ws_backend.unwrap_or_else(|| project.get_backend().to_string()),
+            )
         } else {
             // Not actually a workspace, treat as single project
             let bsp_dir = project_dir.clone();
             let source_dirs = vec![("".to_string(), project.get_source_dir().to_string())];
-            (bsp_dir, source_dirs, deps.clone(), project.get_backend().to_string())
+            (
+                bsp_dir,
+                source_dirs,
+                deps.clone(),
+                project.get_backend().to_string(),
+            )
         }
     } else {
         // Single project
         let bsp_dir = project_dir.clone();
         let source_dirs = vec![("".to_string(), project.get_source_dir().to_string())];
-        (bsp_dir, source_dirs, deps.clone(), project.get_backend().to_string())
+        (
+            bsp_dir,
+            source_dirs,
+            deps.clone(),
+            project.get_backend().to_string(),
+        )
     };
-    
+
     setup_bsp(bsp_dir.as_path(), &all_deps, &source_dirs, &backend).await?;
 
     let target = file.unwrap_or_else(|| PathManager::from(project.get_main_file_path()));
@@ -279,10 +331,7 @@ async fn execute_run(cwd: &PathManager, file: Option<PathManager>, lib: bool) ->
 
     if lib {
         let _ = run_scala_file(&project_dir, &target, true).await?;
-        println!(
-            "{}",
-            format!("库: {} (仅编译)", target.display())
-        );
+        println!("{}", format!("库: {} (仅编译)", target.display()));
     } else {
         let output = run_single_file_with_deps(&project_dir, &target, &deps).await?;
         println!("{}", output);
@@ -294,7 +343,9 @@ async fn execute_run(cwd: &PathManager, file: Option<PathManager>, lib: bool) ->
 /// 执行添加依赖命令
 async fn execute_add(cwd: &PathManager, deps: &[String]) -> anyhow::Result<()> {
     let workspace_root = loader::find_workspace_root(cwd);
-    let project_dir = workspace_root.map(PathManager::from).unwrap_or_else(|| cwd.clone());
+    let project_dir = workspace_root
+        .map(PathManager::from)
+        .unwrap_or_else(|| cwd.clone());
     for dep in deps {
         add_dependency(&project_dir.to_path_buf(), dep).await?;
     }
@@ -322,12 +373,15 @@ async fn create_project(name: &str, cwd: &PathManager) -> Result<()> {
     // Hello world
     let main_template_path = paths::main_template();
     let code = main_template_path.read_sync()?;
-    creator.write_file("src/main/scala/Main.scala", &code).await?;
+    creator
+        .write_file("src/main/scala/Main.scala", &code)
+        .await?;
 
     // Auto-add to workspace if in one
     if let Some(workspace_root) = crate::config::loader::find_workspace_root(cwd) {
         let manifest_path = workspace_root.join("project.toml");
-        let relative_path = proj_dir.strip_prefix(&workspace_root)
+        let relative_path = proj_dir
+            .strip_prefix(&workspace_root)
             .unwrap_or(&proj_dir)
             .to_string_lossy()
             .to_string();
@@ -353,7 +407,7 @@ async fn init_workspace(cwd: &PathManager) -> Result<()> {
     let manifest_path = cwd.join("project.toml");
     if manifest_path.exists_sync() {
         return Err(utils::single_validation_error(
-            "project.toml 已存在于此目录".to_string()
+            "project.toml 已存在于此目录".to_string(),
         ));
     }
 
@@ -362,6 +416,9 @@ async fn init_workspace(cwd: &PathManager) -> Result<()> {
     let manifest = template_path.read_sync()?;
     manifest_path.write_sync(&manifest)?;
 
-    println!("{}", format!("已初始化空工作空间于 {}", cwd.to_path_buf().display()));
+    println!(
+        "{}",
+        format!("已初始化空工作空间于 {}", cwd.to_path_buf().display())
+    );
     Ok(())
 }

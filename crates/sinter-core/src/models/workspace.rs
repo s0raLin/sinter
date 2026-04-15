@@ -1,11 +1,11 @@
 //! 工作空间模型和DTO
 
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::path::PathBuf;
 use super::dependency::DependencySpec;
 use super::directory::Directory;
 use super::library::Library;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 /// 工作空间配置
 #[derive(Debug, Clone)]
@@ -43,7 +43,8 @@ impl Workspace {
 
     /// 获取所有成员的绝对路径
     pub fn get_member_paths(&self) -> Vec<PathBuf> {
-        self.members.iter()
+        self.members
+            .iter()
             .map(|member| self.root_path.join(member))
             .collect()
     }
@@ -145,14 +146,16 @@ impl Workspace {
 
     /// 获取所有成员目录实体
     pub fn get_member_directories(&self) -> Vec<Directory> {
-        self.members.iter()
+        self.members
+            .iter()
             .map(|member| Directory::from_path(self.get_member_path(member)))
             .collect()
     }
 
     /// 获取工作空间级依赖库实体
     pub fn get_libraries(&self) -> Vec<Library> {
-        self.dependencies.iter()
+        self.dependencies
+            .iter()
             .map(|(name, spec)| Library::from_dependency_spec(name.clone(), spec.clone()))
             .collect()
     }
@@ -161,7 +164,9 @@ impl Workspace {
     pub fn to_dto(&self) -> WorkspaceDto {
         WorkspaceDto {
             members: self.members.clone(),
-            dependencies: self.dependencies.iter()
+            dependencies: self
+                .dependencies
+                .iter()
                 .map(|(k, v)| (k.clone(), v.to_dto()))
                 .collect(),
         }
@@ -173,7 +178,9 @@ impl From<WorkspaceDto> for Workspace {
         Self {
             root_path: PathBuf::new(), // 需要外部设置
             members: dto.members,
-            dependencies: dto.dependencies.into_iter()
+            dependencies: dto
+                .dependencies
+                .into_iter()
                 .map(|(k, v)| (k, v.into()))
                 .collect(),
         }

@@ -2,8 +2,8 @@
 //!
 //! 映射外部依赖库实体
 
-use std::path::PathBuf;
 use super::dependency::DependencySpec;
+use std::path::PathBuf;
 
 /// 依赖库实体 - 映射到实际的外部库或本地库
 #[derive(Debug, Clone)]
@@ -130,13 +130,21 @@ impl Library {
         }
 
         if let Err(spec_errors) = self.spec.validate() {
-            errors.extend(spec_errors.into_iter().map(|e| format!("库 '{}' 依赖错误: {}", self.name, e)));
+            errors.extend(
+                spec_errors
+                    .into_iter()
+                    .map(|e| format!("库 '{}' 依赖错误: {}", self.name, e)),
+            );
         }
 
         // 检查本地路径是否存在（如果指定了）
         if let Some(path) = &self.local_path {
             if !path.exists() {
-                errors.push(format!("库 '{}' 的本地路径不存在: {}", self.name, path.display()));
+                errors.push(format!(
+                    "库 '{}' 的本地路径不存在: {}",
+                    self.name,
+                    path.display()
+                ));
             }
         }
 
