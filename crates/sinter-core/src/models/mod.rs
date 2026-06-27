@@ -1,5 +1,3 @@
-//! 数据模型 — Sinter 的核心领域对象
-
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
