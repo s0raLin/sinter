@@ -1,4 +1,4 @@
-use crate::deps::deps::Dependency;
+use crate::deps::Dependency;
 use anyhow::anyhow;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};

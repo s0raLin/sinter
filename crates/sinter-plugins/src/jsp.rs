@@ -1,94 +1,58 @@
 //! JSP 项目生成插件
 //!
-//! 这个文件展示了如何创建一个简单的插件。
-//! 只需要实现 CommandHandler trait 的四个方法即可：
-//! 1. name() - 返回命令名称
-//! 2. about() - 返回命令描述
-//! 3. configure() - 配置命令参数（可选，有默认实现）
-//! 4. execute() - 执行命令逻辑
-//!
-//! 注意：只需要依赖 `sinter-plugin`，所有必要的类型都已重新导出
+//! 实现 CommandHandler trait 即可创建一个新命令。
 
-use sinter_plugin_api::*;
+use async_trait::async_trait;
+use clap::{Arg, ArgMatches, Command};
+use sinter::CommandHandler;
+use std::path::PathBuf;
+use tokio::fs;
 
-// 模板文件路径
 fn pom_xml_template() -> String {
-    std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/pom.xml.template")).unwrap_or_default()
+    include_str!("../templates/pom.xml.template").to_string()
 }
-
 fn web_xml_template() -> String {
-    std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/web.xml.template")).unwrap_or_default()
+    include_str!("../templates/web.xml.template").to_string()
 }
-
 fn index_jsp_template() -> String {
-    std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/index.jsp.template")).unwrap_or_default()
+    include_str!("../templates/index.jsp.template").to_string()
 }
 
-/// JSP 插件结构体
 pub struct JspPlugin;
 
 #[async_trait]
 impl CommandHandler for JspPlugin {
-    /// 命令名称：用户输入 `sinter jsp` 时会触发
-    fn name(&self) -> &'static str {
-        "jsp"
-    }
+    fn name(&self) -> &'static str { "jsp" }
+    fn about(&self) -> &'static str { "Generate a new JSP project" }
 
-    /// 命令描述：显示在帮助信息中
-    fn about(&self) -> &'static str {
-        "Generate a new JSP project"
-    }
-
-    /// 配置命令参数：定义 `sinter jsp <name>` 中的参数
     fn configure(&self, cmd: Command) -> Command {
         cmd.about(self.about()).arg(
-            Arg::new("name")
-                .help("Name of the JSP project")
-                .required(true)
+            Arg::new("name").help("Name of the JSP project").required(true)
         )
     }
 
-    /// 执行命令逻辑：当用户运行 `sinter jsp <name>` 时调用
-    async fn execute(&self, matches: &ArgMatches, cwd: &PathBuf) -> AnyhowResult<()> {
-        // 从命令行参数中获取项目名称
-        let name = matches
-            .get_one::<String>("name")
-            .expect("name argument is required");
-
-        // 创建项目目录
+    async fn execute(&self, matches: &ArgMatches, cwd: &PathBuf) -> anyhow::Result<()> {
+        let name = matches.get_one::<String>("name").expect("name argument is required");
         let proj_dir = cwd.join(name);
         if proj_dir.exists() {
             println!("JSP project '{}' already exists", name);
             return Ok(());
         }
 
-        // 创建目录结构
         fs::create_dir_all(proj_dir.join("src/main/webapp/WEB-INF")).await?;
         fs::create_dir_all(proj_dir.join("src/main/java")).await?;
         fs::create_dir_all(proj_dir.join("src/main/resources")).await?;
 
-        // 生成 pom.xml
-        let pom_xml = pom_xml_template().replace("{{name}}", name);
-        fs::write(proj_dir.join("pom.xml"), pom_xml).await?;
-
-        // 生成 web.xml
+        fs::write(proj_dir.join("pom.xml"), pom_xml_template().replace("{{name}}", name)).await?;
         fs::write(proj_dir.join("src/main/webapp/WEB-INF/web.xml"), web_xml_template()).await?;
-
-        // 生成 index.jsp
         fs::write(proj_dir.join("src/main/webapp/index.jsp"), index_jsp_template()).await?;
 
         println!("Created JSP project '{}'", name);
         println!("To build and run:");
         println!("  cd {}", name);
         println!("  mvn clean package");
-        println!("  # Deploy the generated .war file to Tomcat");
-
         Ok(())
     }
 }
 
-// 导出插件实例创建函数，供注册使用
-pub fn jsp_plugin() -> JspPlugin {
-    JspPlugin
-}
-
+pub fn jsp_plugin() -> JspPlugin { JspPlugin }

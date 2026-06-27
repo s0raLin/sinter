@@ -1,7 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/*",
+    "crates/sinter-core",
+    "crates/sinter-plugins",
+    "crates/sinter-cli",
 ]
 
 [workspace.package]

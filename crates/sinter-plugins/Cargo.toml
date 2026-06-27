@@ -1,4 +1,4 @@
-# crates/plugins/Cargo.toml
+# crates/sinter-plugins/Cargo.toml
 [package]
 name = "sinter-plugins"
 version.workspace = true
@@ -6,4 +6,8 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-sinter-plugin-api = { path = "../sinter-plugin-api" }
+sinter = { path = "../sinter-core" }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+clap = { workspace = true }
+tokio = { workspace = true }

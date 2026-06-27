@@ -1359,7 +1359,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sinter-plugin-api"
+name = "sinter-plugins"
 version = "0.1.2"
 dependencies = [
  "anyhow",
@@ -1367,13 +1367,6 @@ dependencies = [
  "clap",
  "sinter",
  "tokio",
-]
-
-[[package]]
-name = "sinter-plugins"
-version = "0.1.2"
-dependencies = [
- "sinter-plugin-api",
 ]
 
 [[package]]
