@@ -202,6 +202,7 @@ mod tests {
             root_path: PathBuf::from("/tmp/test"),
             package: valid_package(),
             dependencies: HashMap::new(),
+            build: Default::default(),
             workspace: None,
         }
     }
@@ -274,6 +275,7 @@ mod tests {
             root_path: PathBuf::from("/tmp/test"),
             package: valid_package(),
             dependencies: deps,
+            build: Default::default(),
             workspace: None,
         };
         assert!(p.validate().is_err());
@@ -295,6 +297,7 @@ mod tests {
                 backend: "scala-cli".into(),
             },
             dependencies: HashMap::new(),
+            build: Default::default(),
             workspace: None,
         };
         let project: Project = dto.into();

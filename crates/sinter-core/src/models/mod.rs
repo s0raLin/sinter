@@ -1,13 +1,11 @@
 //! 数据模型 — Sinter 的核心领域对象
-//!
-//! 定义项目配置、依赖、工作空间等核心实体
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// DependencySpec — 依赖规范
+// DependencySpec
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -24,6 +22,20 @@ pub struct DependencyDetail {
     pub workspace: bool,
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum DependencyDto {
+    Simple(String),
+    Detailed(DependencyDetailDto),
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct DependencyDetailDto {
+    pub version: Option<String>,
+    #[serde(default)]
+    pub workspace: bool,
+}
+
 impl DependencySpec {
     pub fn validate(&self) -> Result<(), Vec<String>> {
         let mut errors = Vec::new();
@@ -32,41 +44,26 @@ impl DependencySpec {
                 if dep_str.trim().is_empty() {
                     errors.push("依赖字符串不能为空".to_string());
                 } else if !dep_str.contains(':') {
-                    if !is_valid_version(dep_str) {
-                        errors.push(format!("依赖版本格式无效: '{}'", dep_str));
-                    }
+                    if !is_valid_version(dep_str) { errors.push(format!("依赖版本格式无效: '{}'", dep_str)); }
                 } else {
                     let colon_count = dep_str.matches(':').count();
                     if colon_count < 2 {
-                        errors.push(format!(
-                            "依赖格式无效 '{}'，应为 'group:artifact:version'",
-                            dep_str
-                        ));
+                        errors.push(format!("依赖格式无效 '{}'，应为 'group:artifact:version'", dep_str));
                     } else if let Some(last_colon_pos) = dep_str.rfind(':') {
                         let version = &dep_str[last_colon_pos + 1..];
-                        let group_artifact = &dep_str[..last_colon_pos];
-                        if group_artifact.trim().is_empty() {
+                        if dep_str[..last_colon_pos].trim().is_empty() {
                             errors.push("依赖的 group:artifact 部分不能为空".to_string());
                         }
-                        if !is_valid_version(version) {
-                            errors.push(format!("依赖版本格式无效: '{}'", version));
-                        }
-                    } else {
-                        errors.push(format!("依赖格式无效 '{}'", dep_str));
+                        if !is_valid_version(version) { errors.push(format!("依赖版本格式无效: '{}'", version)); }
                     }
                 }
             }
             DependencySpec::Detailed(detail) => {
                 if let Some(version) = &detail.version {
-                    if version.trim().is_empty() {
-                        errors.push("依赖版本不能为空".to_string());
-                    } else if !is_valid_version(version) {
-                        errors.push(format!("依赖版本格式无效: '{}'", version));
-                    }
+                    if version.trim().is_empty() { errors.push("依赖版本不能为空".to_string()); }
+                    else if !is_valid_version(version) { errors.push(format!("依赖版本格式无效: '{}'", version)); }
                 }
-                if detail.workspace && detail.version.is_some() {
-                    errors.push("工作空间依赖不应指定版本".to_string());
-                }
+                if detail.workspace && detail.version.is_some() { errors.push("工作空间依赖不应指定版本".to_string()); }
             }
         }
         if errors.is_empty() { Ok(()) } else { Err(errors) }
@@ -81,12 +78,11 @@ impl DependencySpec {
 }
 
 fn is_valid_version(version: &str) -> bool {
-    !version.is_empty()
-        && version.chars().all(|c| c.is_alphanumeric() || c == '.' || c == '-' || c == '_')
+    !version.is_empty() && version.chars().all(|c| c.is_alphanumeric() || c == '.' || c == '-' || c == '_')
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Project / Package
+// Project / Package / BuildConfig
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 #[derive(Debug, Clone)]
@@ -94,6 +90,7 @@ pub struct Project {
     pub root_path: PathBuf,
     pub package: Package,
     pub dependencies: HashMap<String, DependencySpec>,
+    pub build: BuildConfig,
     pub workspace: Option<Workspace>,
 }
 
@@ -102,6 +99,8 @@ pub struct ProjectDto {
     pub package: PackageDto,
     #[serde(default)]
     pub dependencies: HashMap<String, DependencyDto>,
+    #[serde(default)]
+    pub build: BuildConfigDto,
     pub workspace: Option<WorkspaceDto>,
 }
 
@@ -115,6 +114,14 @@ pub struct Package {
     pub target_dir: String,
     pub test_dir: String,
     pub backend: String,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct BuildConfig {
+    pub sbt_version: String,
+    pub gradle_version: String,
+    pub maven_plugins: Vec<String>,
+    pub jvm_options: Vec<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -134,18 +141,16 @@ pub struct PackageDto {
     pub backend: String,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
-#[serde(untagged)]
-pub enum DependencyDto {
-    Simple(String),
-    Detailed(DependencyDetailDto),
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct DependencyDetailDto {
-    pub version: Option<String>,
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
+pub struct BuildConfigDto {
+    #[serde(default = "default_sbt_version")]
+    pub sbt_version: String,
+    #[serde(default = "default_gradle_version")]
+    pub gradle_version: String,
     #[serde(default)]
-    pub workspace: bool,
+    pub maven_plugins: Vec<String>,
+    #[serde(default)]
+    pub jvm_options: Vec<String>,
 }
 
 impl Project {
@@ -156,9 +161,7 @@ impl Project {
 
     pub fn get_main_file_path(&self) -> PathBuf {
         let main_class = self.package.main.as_deref().unwrap_or("Main");
-        self.root_path
-            .join(&self.package.source_dir)
-            .join(format!("{}.scala", main_class))
+        self.root_path.join(&self.package.source_dir).join(format!("{}.scala", main_class))
     }
 
     pub fn is_workspace_root(&self) -> bool { self.workspace.is_some() }
@@ -217,21 +220,14 @@ pub struct WorkspaceDto {
 }
 
 impl Workspace {
-    pub fn with_root_path(mut self, root_path: PathBuf) -> Self {
-        self.root_path = root_path;
-        self
-    }
+    pub fn with_root_path(mut self, root_path: PathBuf) -> Self { self.root_path = root_path; self }
 
     pub fn validate(&self) -> Result<(), Vec<String>> {
         let mut errors = Vec::new();
-        if self.members.is_empty() {
-            errors.push("工作空间成员列表不能为空".to_string());
-        }
+        if self.members.is_empty() { errors.push("工作空间成员列表不能为空".to_string()); }
         for (name, spec) in &self.dependencies {
             if let Err(dep_errors) = spec.validate() {
-                for error in dep_errors {
-                    errors.push(format!("工作空间依赖 '{}' 验证失败: {}", name, error));
-                }
+                for error in dep_errors { errors.push(format!("工作空间依赖 '{}' 验证失败: {}", name, error)); }
             }
         }
         if errors.is_empty() { Ok(()) } else { Err(errors) }
@@ -248,8 +244,15 @@ impl From<ProjectDto> for Project {
             root_path: PathBuf::new(),
             package: dto.package.into(),
             dependencies: dto.dependencies.into_iter().map(|(k, v)| (k, v.into())).collect(),
+            build: dto.build.into(),
             workspace: dto.workspace.map(|ws| ws.into()),
         }
+    }
+}
+
+impl From<BuildConfigDto> for BuildConfig {
+    fn from(d: BuildConfigDto) -> Self {
+        Self { sbt_version: d.sbt_version, gradle_version: d.gradle_version, maven_plugins: d.maven_plugins, jvm_options: d.jvm_options }
     }
 }
 
@@ -265,11 +268,7 @@ impl From<PackageDto> for Package {
 
 impl From<WorkspaceDto> for Workspace {
     fn from(dto: WorkspaceDto) -> Self {
-        Self {
-            root_path: PathBuf::new(),
-            members: dto.members,
-            dependencies: dto.dependencies.into_iter().map(|(k, v)| (k, v.into())).collect(),
-        }
+        Self { root_path: PathBuf::new(), members: dto.members, dependencies: dto.dependencies.into_iter().map(|(k, v)| (k, v.into())).collect() }
     }
 }
 
@@ -277,9 +276,7 @@ impl From<DependencyDto> for DependencySpec {
     fn from(dto: DependencyDto) -> Self {
         match dto {
             DependencyDto::Simple(s) => DependencySpec::Simple(s),
-            DependencyDto::Detailed(d) => DependencySpec::Detailed(DependencyDetail {
-                version: d.version, workspace: d.workspace,
-            }),
+            DependencyDto::Detailed(d) => DependencySpec::Detailed(DependencyDetail { version: d.version, workspace: d.workspace }),
         }
     }
 }
@@ -289,3 +286,5 @@ fn default_source_dir() -> String { "src/main/scala".to_string() }
 fn default_target_dir() -> String { "target".to_string() }
 fn default_test_dir() -> String { "src/test/scala".to_string() }
 fn default_backend() -> String { "scala-cli".to_string() }
+fn default_sbt_version() -> String { "1.9.0".to_string() }
+fn default_gradle_version() -> String { "8.5".to_string() }
