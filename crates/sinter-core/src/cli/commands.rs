@@ -52,7 +52,19 @@ pub async fn cmd_new(cwd: &PathManager, name: &str, backend: &str) -> anyhow::Re
     let code = paths::main_template().read_sync()?;
     creator.write_file("src/main/scala/Main.scala", &code).await?;
 
-    // backend-specific
+    // 为 scala-cli 后端生成 BSP 配置 (.bsp + .scala-build)
+    if backend == "scala-cli" {
+        crate::ide::setup_bsp(
+            &proj_dir,
+            &[],
+            &[("".to_string(), "src/main/scala".to_string())],
+            backend,
+        )
+        .await?;
+        println!("Generated BSP configuration (.bsp, .scala-build)");
+    }
+
+    // backend-specific (other backends)
     match backend {
         "sbt" => {
             let raw = paths::template_file("build.sbt.template").read_sync().unwrap_or_default();

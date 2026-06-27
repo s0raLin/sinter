@@ -31,8 +31,9 @@ pub async fn setup_bsp(
 
     match backend {
         "scala-cli" => {
+            // BSP 文件只需写明 scala-cli 路径即可，无需 scala-cli 已安装
             let scala_cli_path = crate::build::get_scala_cli_path().await
-                .ok_or_else(|| anyhow::anyhow!("scala-cli is not available"))?;
+                .unwrap_or_else(|| "scala-cli".to_string());
             let scala_cli_version = "1.11.0".to_string();
 
             let mut scala_files = Vec::new();

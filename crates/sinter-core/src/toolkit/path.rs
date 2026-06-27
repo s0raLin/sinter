@@ -252,25 +252,6 @@ pub mod paths {
         template_file("workspace.project.toml.template")
     }
 
-    /// 获取 BSP 相关模板路径
-    pub fn bsp_templates() -> Vec<PathManager> {
-        vec![
-            template_file(".classpath.template"),
-            template_file(".scala-build.template"),
-            template_file("ide-options-v2.json.template"),
-        ]
-    }
-
-    /// 获取插件模板目录
-    pub fn plugin_templates_dir() -> PathManager {
-        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
-        PathManager::new(manifest_dir).join("../sinter-plugins/templates")
-    }
-
-    /// 获取插件模板文件路径
-    pub fn plugin_template_file(name: &str) -> PathManager {
-        plugin_templates_dir().join(name)
-    }
 }
 
 /// 路径验证和规范化工具
