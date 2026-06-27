@@ -90,7 +90,6 @@ pub struct Project {
     pub root_path: PathBuf,
     pub package: Package,
     pub dependencies: HashMap<String, DependencySpec>,
-    pub build: BuildConfig,
     pub workspace: Option<Workspace>,
 }
 
@@ -99,8 +98,6 @@ pub struct ProjectDto {
     pub package: PackageDto,
     #[serde(default)]
     pub dependencies: HashMap<String, DependencyDto>,
-    #[serde(default)]
-    pub build: BuildConfigDto,
     pub workspace: Option<WorkspaceDto>,
 }
 
@@ -114,14 +111,6 @@ pub struct Package {
     pub target_dir: String,
     pub test_dir: String,
     pub backend: String,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct BuildConfig {
-    pub sbt_version: String,
-    pub gradle_version: String,
-    pub maven_plugins: Vec<String>,
-    pub jvm_options: Vec<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -139,18 +128,6 @@ pub struct PackageDto {
     pub test_dir: String,
     #[serde(default = "default_backend")]
     pub backend: String,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, Default)]
-pub struct BuildConfigDto {
-    #[serde(default = "default_sbt_version")]
-    pub sbt_version: String,
-    #[serde(default = "default_gradle_version")]
-    pub gradle_version: String,
-    #[serde(default)]
-    pub maven_plugins: Vec<String>,
-    #[serde(default)]
-    pub jvm_options: Vec<String>,
 }
 
 impl Project {
@@ -244,15 +221,8 @@ impl From<ProjectDto> for Project {
             root_path: PathBuf::new(),
             package: dto.package.into(),
             dependencies: dto.dependencies.into_iter().map(|(k, v)| (k, v.into())).collect(),
-            build: dto.build.into(),
             workspace: dto.workspace.map(|ws| ws.into()),
         }
-    }
-}
-
-impl From<BuildConfigDto> for BuildConfig {
-    fn from(d: BuildConfigDto) -> Self {
-        Self { sbt_version: d.sbt_version, gradle_version: d.gradle_version, maven_plugins: d.maven_plugins, jvm_options: d.jvm_options }
     }
 }
 
@@ -286,5 +256,3 @@ fn default_source_dir() -> String { "src/main/scala".to_string() }
 fn default_target_dir() -> String { "target".to_string() }
 fn default_test_dir() -> String { "src/test/scala".to_string() }
 fn default_backend() -> String { "scala-cli".to_string() }
-fn default_sbt_version() -> String { "1.9.0".to_string() }
-fn default_gradle_version() -> String { "8.5".to_string() }

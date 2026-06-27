@@ -8,8 +8,4 @@ target_dir = "target"
 test_dir = "src/test/scala"
 backend = "{backend}"
 
-[build]
-sbt_version = "1.9.0"
-gradle_version = "8.5"
-
 [dependencies]
