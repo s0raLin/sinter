@@ -17,8 +17,8 @@ pub async fn execute_command(command: Commands, cwd: &PathManager) -> anyhow::Re
         Commands::Run { file, lib } => execute_run(cwd, file.map(PathManager::from), lib).await?,
         Commands::Add { deps } => execute_add(cwd, &deps).await?,
         Commands::Test { file } => cmd_test(cwd, file.map(PathManager::from)).await?,
-        Commands::Jsp { name } => {
-            anyhow::bail!("JSP command '{}' requires the JSP plugin to be loaded", name);
+        Commands::Plugin { name, args: _ } => {
+            anyhow::bail!("Plugin '{}' was not handled — this is a bug", name);
         }
     }
     Ok(())

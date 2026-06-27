@@ -18,3 +18,5 @@ crates/sinter-core/bin/coursier
 crates/sinter-core/bin/coursier.exe
 crates/sinter-core/bin/scala-cli
 crates/sinter-core/bin/scala-cli.exe
+hello/project.toml
+hello/src/main/scala/Main.scala
