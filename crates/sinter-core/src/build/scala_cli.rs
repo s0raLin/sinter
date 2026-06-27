@@ -5,9 +5,11 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::fs;
 use tokio::process::Command;
+use tokio::sync::OnceCell;
 use tokio::time::Duration;
 
 static SCALA_CLI_WARNING_PRINTED: AtomicBool = AtomicBool::new(false);
+static SCALA_CLI_PATH: OnceCell<Option<String>> = OnceCell::const_new();
 
 /// 超时时间 (scala-cli --version 首次运行可能触发 Coursier 下载元数据)
 const SCALA_CLI_TIMEOUT: Duration = Duration::from_secs(30);
@@ -40,8 +42,7 @@ async fn check_command_available(cmd: &str) -> bool {
     }
 }
 
-/// 获取 scala-cli 可执行文件路径
-pub async fn get_scala_cli_path() -> Option<String> {
+async fn discover_scala_cli_path() -> Option<String> {
     eprintln!("  Checking for scala-cli...");
     if check_command_available("scala-cli").await {
         eprintln!("  Found system scala-cli");
@@ -72,6 +73,14 @@ pub async fn get_scala_cli_path() -> Option<String> {
     }
     eprintln!("  scala-cli not found");
     None
+}
+
+/// 获取 scala-cli 可执行文件路径（结果缓存，仅探测一次）
+pub async fn get_scala_cli_path() -> Option<String> {
+    SCALA_CLI_PATH
+        .get_or_init(|| async { discover_scala_cli_path().await })
+        .await
+        .clone()
 }
 
 /// 检查 scala-cli 是否可用（仅打印一次警告）
