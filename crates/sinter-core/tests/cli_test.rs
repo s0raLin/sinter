@@ -7,7 +7,7 @@ mod tests {
     #[test]
     fn parse_new_command() {
         let cli = Cli::parse_from_args(&["sinter", "new", "myproject"]);
-        assert!(matches!(&*cli, Some(sinter::Commands::New { name }) if name == "myproject"));
+        assert!(matches!(&*cli, Some(sinter::Commands::New { name, .. }) if name == "myproject"));
     }
 
     #[test]

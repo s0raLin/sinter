@@ -6,7 +6,7 @@ use crate::toolkit::path::{paths, PathManager};
 use crate::toolkit::template::Template;
 pub async fn execute_command(command: Commands, cwd: &PathManager) -> anyhow::Result<()> {
     match command {
-        Commands::New { name } => cmd_new(cwd, &name, "scala-cli").await,
+        Commands::New { name, backend } => cmd_new(cwd, &name, &backend).await,
         Commands::Init => cmd_init(cwd).await,
         Commands::Workspace { subcommand } => cmd_workspace(cwd, &subcommand).await,
         Commands::Build => execute_build(cwd).await,

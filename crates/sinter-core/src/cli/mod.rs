@@ -19,7 +19,7 @@ impl std::ops::Deref for Cli {
 
 #[derive(Debug, Clone)]
 pub enum Commands {
-    New { name: String },
+    New { name: String, backend: String },
     Init,
     Build,
     Run { file: Option<std::path::PathBuf>, lib: bool },
@@ -87,6 +87,7 @@ fn parse_command_from_matches(matches: &clap::ArgMatches) -> Option<Commands> {
     match matches.subcommand() {
         Some(("new", sub_m)) => Some(Commands::New {
             name: sub_m.get_one::<String>("name").unwrap().clone(),
+            backend: sub_m.get_one::<String>("backend").cloned().unwrap_or_else(|| "scala-cli".into()),
         }),
         Some(("init", _)) => Some(Commands::Init),
         Some(("build", _)) => Some(Commands::Build),
