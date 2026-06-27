@@ -5,8 +5,12 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::fs;
 use tokio::process::Command;
+use tokio::time::Duration;
 
 static SCALA_CLI_WARNING_PRINTED: AtomicBool = AtomicBool::new(false);
+
+/// 超时时间 (scala-cli --version 首次运行可能触发 Coursier 下载元数据)
+const SCALA_CLI_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// 获取打包的 scala-cli 可执行文件路径
 fn get_bundled_scala_cli_path() -> Option<PathBuf> {
@@ -25,13 +29,22 @@ fn get_bundled_scala_cli_path() -> Option<PathBuf> {
 }
 
 async fn check_command_available(cmd: &str) -> bool {
-    Command::new(cmd).arg("--version").output().await
-        .map(|o| o.status.success()).unwrap_or(false)
+    match tokio::time::timeout(SCALA_CLI_TIMEOUT, Command::new(cmd).arg("--version").output()).await
+    {
+        Ok(Ok(o)) => o.status.success(),
+        Ok(Err(_)) => false,
+        Err(_) => {
+            eprintln!("  (timeout checking {}, skipping)", cmd);
+            false
+        }
+    }
 }
 
 /// 获取 scala-cli 可执行文件路径
 pub async fn get_scala_cli_path() -> Option<String> {
+    eprintln!("  Checking for scala-cli...");
     if check_command_available("scala-cli").await {
+        eprintln!("  Found system scala-cli");
         return Some("scala-cli".to_string());
     }
     if let Some(bundled_path) = get_bundled_scala_cli_path() {
@@ -43,13 +56,21 @@ pub async fn get_scala_cli_path() -> Option<String> {
             }
         }
         if let Some(path_str) = bundled_path.to_str() {
-            let mut cmd = Command::new(path_str);
-            cmd.arg("--version");
-            if cmd.output().await.map(|o| o.status.success()).unwrap_or(false) {
-                return Some(path_str.to_string());
+            match tokio::time::timeout(
+                SCALA_CLI_TIMEOUT,
+                Command::new(path_str).arg("--version").output(),
+            )
+            .await
+            {
+                Ok(Ok(o)) if o.status.success() => {
+                    eprintln!("  Found bundled scala-cli at {}", path_str);
+                    return Some(path_str.to_string());
+                }
+                _ => {}
             }
         }
     }
+    eprintln!("  scala-cli not found");
     None
 }
 

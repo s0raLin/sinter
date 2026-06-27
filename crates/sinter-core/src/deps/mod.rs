@@ -153,7 +153,7 @@ pub async fn add_dependency(project_dir: &Path, dep_spec: &str) -> anyhow::Resul
 
 async fn parse_dep_spec(spec: &str, default_scala_version: &str) -> anyhow::Result<(String, String, String)> {
     let is_scala_format = spec.contains("::");
-    let (group, artifact_version, is_scala) = if is_scala_format {
+    let (group, artifact_version, _is_scala) = if is_scala_format {
         let parts: Vec<&str> = spec.split("::").collect();
         if parts.len() != 2 { anyhow::bail!("依赖格式无效，请使用完整格式：group::artifact:version"); }
         (parts[0], parts[1], true)
