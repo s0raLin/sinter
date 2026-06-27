@@ -6,15 +6,14 @@ A Cargo-like build tool for Scala projects.
 
 ## Features
 
-- Project initialization with `sinter new <name>`
-- Workspace initialization with `sinter init`
-- Building Scala projects with `sinter build`
-- Running Scala applications with `sinter run`
-- Adding dependencies with `sinter add <dep>`
-- Running tests with `sinter test`
-- Workspace management with `sinter workspace`
-- Internationalization support with `sinter i18n`
-- Configurable project settings via `project.toml`
+- `sinter new <name>` — create a new Scala project
+- `sinter init` — initialize a workspace
+- `sinter build` — build the project with dependency resolution
+- `sinter run` — run a Scala application (single file or project)
+- `sinter add <dep>` — add a dependency to `project.toml`
+- `sinter test` — run tests
+- `sinter workspace add <path>` — add a member to the workspace
+- **Plugin system** — extend sinter with custom commands via `CommandHandler` trait
 
 ## Installation
 
@@ -29,9 +28,9 @@ cargo build --release
 
 ### Prerequisites
 
-- Rust (latest stable)
-- Scala CLI (for Scala compilation and execution)
-- Coursier (for dependency management, optional but recommended)
+- **Rust** (latest stable)
+- **Scala CLI** (`scala-cli`) — for compilation and execution.
+  Install: `curl -fL https://github.com/VirtusLab/scala-cli/releases/latest/download/scala-cli-x86_64-pc-linux.gz | gzip -d > scala-cli && chmod +x scala-cli && mv scala-cli ~/.local/bin/`
 
 ## Quick Start
 
@@ -40,104 +39,71 @@ cargo build --release
 sinter new hello-scala
 cd hello-scala
 
-# Add a dependency
-sinter add cats
+# Add a dependency (Scala format — group::artifact:version)
+sinter add org.typelevel::cats-core:2.10.0
 
 # Build and run
 sinter build
 sinter run
 ```
 
-## Usage
+## Commands
 
-### Getting Help
+### `sinter new <name>`
 
-```bash
-sinter --help          # Show all commands
-sinter [command] --help # Show help for specific command
+Creates a new Scala project with the following structure:
+
 ```
-
-### Initialize a workspace
-
-```bash
-mkdir my-workspace
-cd my-workspace
-sinter init
-```
-
-This creates a workspace configuration file `workspace.project.toml`.
-
-### Create a new project
-
-```bash
-sinter new my-scala-project
-cd my-scala-project
-```
-
-This creates a new Scala project with the following structure:
-```
-my-scala-project/
-├── project.toml          # Project configuration
+hello-scala/
+├── project.toml
 └── src/main/scala/
-    └── Main.scala       # Main application file
+    └── Main.scala
 ```
 
-### Manage workspace
+### `sinter init`
 
-```bash
-sinter workspace add path/to/project
-```
+Initializes a workspace by creating a `project.toml` with a `[workspace]` section in the current directory.
 
-Adds a project to the workspace.
+### `sinter workspace add <path>`
 
-### Build the project
+Adds an existing project to the workspace. `<path>` is relative to the workspace root.
 
-```bash
-sinter build
-```
+### `sinter build`
 
-Compiles all Scala sources in `src/main/scala` and places compiled classes in the `target_dir` specified in `project.toml`.
+Compiles all Scala sources. Automatically resolves transitive dependencies and sets up BSP for IDE integration.
 
-### Run the project
+- In a workspace: builds **all** members
+- In a workspace sub-directory: builds only the current member
+- Standalone project: builds the single project
 
-```bash
-sinter run
-sinter run path/to/MyFile.scala
-sinter run --lib
-```
+### `sinter run [file] [--lib]`
 
-- Without arguments: Runs the main file specified in `project.toml`
-- With a file path: Runs the specified Scala file
-- `--lib`: Forces library mode (compile only, no execution)
+Runs a Scala application.
 
-### Add dependencies
+- Without arguments: runs the main file specified in `project.toml` (`main` field in `[package]`)
+- `sinter run src/main/scala/App.scala` — runs a specific file
+- `sinter run --lib` — compile only (library mode)
 
-```bash
-sinter add cats
-sinter add org.typelevel::cats-core_2.13:2.10.0
-sinter add cats@2.13:2.10.0
-sinter add io.get-coursier:coursier_2.13:2.1.25-M19
-```
+### `sinter test [file]`
 
-Dependency format: `group::artifact[@scala-version][:version]` (Scala) or `group:artifact:version` (Java)
+Runs tests in the project's test directory (`test_dir` in `project.toml`, default `src/test/scala`).
 
-- `cats`: Adds the latest stable version of cats-core for the project's Scala version
-- `org.typelevel::cats-core_2.13:2.10.0`: Full specification with group, artifact, Scala version, and version
-- `cats@2.13:2.10.0`: Short form with Scala version and version
-- `io.get-coursier:coursier_2.13:2.1.25-M19`: Java dependency format (single colon) for Java libraries like coursier
+### `sinter add <dep>`
 
-### Run tests
+Adds a dependency to `project.toml` and validates it.
 
-```bash
-sinter test
-sinter test path/to/TestFile.scala
-```
+**Dependency format:**
 
-Runs tests in the project or a specific test file.
+| Format | Example | Type |
+|--------|---------|------|
+| `group::artifact:version` | `org.typelevel::cats-core:2.10.0` | Scala (with `::`) |
+| `group:artifact:version` | `com.google.guava:guava:31.1-jre` | Java |
+| `sbt:path` | `sbt:../my-sbt-project` | SBT sub-project |
 
-## Configuration
+- For Scala dependencies you may specify a Scala version: `group::artifact@2.13:version`
+- Dependencies added inside a workspace root are added as **workspace dependencies**
 
-Project configuration is stored in `project.toml`:
+## Configuration — `project.toml`
 
 ```toml
 [package]
@@ -147,26 +113,103 @@ main = "Main"
 scala_version = "2.13"
 source_dir = "src/main/scala"
 target_dir = "target"
+test_dir = "src/test/scala"
+backend = "scala-cli"
 
 [dependencies]
-"org.typelevel::cats-core_2.13" = "2.10.0"
+"org.typelevel::cats-core" = "2.10.0"
+```
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `name` | — | Project name (required) |
+| `version` | — | Project version (required) |
+| `main` | `Main` | Main class name (without `.scala`) |
+| `scala_version` | `2.13` | Scala version (`2.13` or `3.x`) |
+| `source_dir` | `src/main/scala` | Source directory |
+| `target_dir` | `target` | Output directory |
+| `test_dir` | `src/test/scala` | Test directory |
+| `backend` | `scala-cli` | Build backend (`scala-cli`/`sbt`/`gradle`/`maven`) |
+
+Workspaces define a `[workspace]` section instead of `[package]`:
+
+```toml
+[workspace]
+members = ["member-a", "member-b"]
+
+[workspace.dependencies]
+"org.typelevel::cats-core" = "2.10.0"
+```
+
+## Plugin System
+
+Sinter has a lightweight plugin architecture. Plugin commands are registered at startup via the builder pattern:
+
+```rust
+use sinter::{Sinter, CommandHandler};
+use sinter_plugins::jsp_plugin;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    Sinter::new()
+        .plugin(jsp_plugin())
+        .run()
+        .await
+}
+```
+
+**Built-in plugin**: JSP project generator (`sinter jsp <name>`)
+
+To create your own plugin, implement the `CommandHandler` trait:
+
+```rust
+use async_trait::async_trait;
+use clap::{Arg, ArgMatches, Command};
+use sinter::CommandHandler;
+use std::path::PathBuf;
+
+pub struct MyPlugin;
+
+#[async_trait]
+impl CommandHandler for MyPlugin {
+    fn name(&self) -> &'static str { "mycommand" }
+    fn about(&self) -> &'static str { "Description of my command" }
+
+    fn configure(&self, cmd: Command) -> Command {
+        cmd.about(self.about())
+            .arg(Arg::new("input").help("Input value").required(true))
+    }
+
+    async fn execute(&self, matches: &ArgMatches, cwd: &PathBuf) -> anyhow::Result<()> {
+        let input = matches.get_one::<String>("input").unwrap();
+        println!("Processing: {}", input);
+        Ok(())
+    }
+}
+```
+
+## Project Structure
+
+```
+crates/
+├── sinter-core/      # Core library — models, deps, build, CLI, plugin trait
+├── sinter-plugins/   # Official plugins (JSP generator)
+└── sinter-cli/       # Binary entry point
+```
+
+## Testing
+
+```bash
+cargo test     # 53 unit tests across models, deps, and CLI parsing
 ```
 
 ## Troubleshooting
 
-### Common Issues
-
-- **Scala CLI not found**: Make sure Scala CLI is installed and available in your PATH
-- **Coursier not found**: Coursier is optional but recommended for better dependency management. Install it from https://get-coursier.io/
-- **Build fails**: Check that all dependencies are correctly specified in `project.toml`
-- **Run fails**: Ensure your main file has a proper entry point (extends App or has a main method)
-
-### Getting More Help
-
-- Run `sinter --help` for command overview
-- Check the [Scala CLI documentation](https://scala-cli.virtuslab.org/) for Scala-specific issues
-- Report issues on the [GitHub repository](https://github.com/s0raLin/sinter)
+- **Scala CLI not found**: Install it (see Prerequisites). Sinter will attempt auto-download once.
+- **`sinter build` hangs**: On first run, Scala CLI may download Coursier metadata (~30s timeout). Wait or press Ctrl+C and try again.
+- **Dependency format error**: Use `group::artifact:version` (Scala) or `group:artifact:version` (Java).
+- **"latest" version rejected**: Sinter requires explicit version numbers for reproducibility.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).
