@@ -1,18 +1,13 @@
 //! Scala CLI 后端 — 发现、下载和执行 scala-cli
 
-use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::fs;
 use tokio::process::Command;
 use tokio::sync::OnceCell;
-use tokio::time::Duration;
 
 static SCALA_CLI_WARNING_PRINTED: AtomicBool = AtomicBool::new(false);
 static SCALA_CLI_PATH: OnceCell<Option<String>> = OnceCell::const_new();
-
-/// 超时时间 (scala-cli --version 首次运行可能触发 Coursier 下载元数据)
-const SCALA_CLI_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// 获取打包的 scala-cli 可执行文件路径
 fn get_bundled_scala_cli_path() -> Option<PathBuf> {
@@ -30,46 +25,23 @@ fn get_bundled_scala_cli_path() -> Option<PathBuf> {
     None
 }
 
-async fn check_command_available(cmd: &str) -> bool {
-    match tokio::time::timeout(SCALA_CLI_TIMEOUT, Command::new(cmd).arg("--version").output()).await
-    {
-        Ok(Ok(o)) => o.status.success(),
-        Ok(Err(_)) => false,
-        Err(_) => {
-            eprintln!("  (timeout checking {}, skipping)", cmd);
-            false
-        }
+/// 用 `which` 检查命令是否存在（极快，不触发 JVM 启动）
+async fn which(cmd: &str) -> bool {
+    match Command::new("which").arg(cmd).output().await {
+        Ok(o) => o.status.success(),
+        Err(_) => false,
     }
 }
 
 async fn discover_scala_cli_path() -> Option<String> {
-    eprintln!("  Checking for scala-cli...");
-    if check_command_available("scala-cli").await {
+    eprintln!("  Checking for scala-cli (via which)...");
+    if which("scala-cli").await {
         eprintln!("  Found system scala-cli");
         return Some("scala-cli".to_string());
     }
     if let Some(bundled_path) = get_bundled_scala_cli_path() {
-        #[cfg(unix)]
-        {
-            if let Ok(mut perms) = fs::metadata(&bundled_path).await.map(|m| m.permissions()) {
-                perms.set_mode(0o755);
-                let _ = fs::set_permissions(&bundled_path, perms).await;
-            }
-        }
-        if let Some(path_str) = bundled_path.to_str() {
-            match tokio::time::timeout(
-                SCALA_CLI_TIMEOUT,
-                Command::new(path_str).arg("--version").output(),
-            )
-            .await
-            {
-                Ok(Ok(o)) if o.status.success() => {
-                    eprintln!("  Found bundled scala-cli at {}", path_str);
-                    return Some(path_str.to_string());
-                }
-                _ => {}
-            }
-        }
+        eprintln!("  Found bundled scala-cli at {}", bundled_path.display());
+        return bundled_path.to_str().map(|s| s.to_string());
     }
     eprintln!("  scala-cli not found");
     None
@@ -120,13 +92,14 @@ pub async fn download_scala_cli() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// 执行 scala-cli 命令
+/// 执行 scala-cli 命令 (无超时 — 用于用户的构建/运行命令)
 pub async fn run_scala_cli(
     args: &[&str], cwd: Option<&std::path::Path>,
 ) -> anyhow::Result<std::process::Output> {
     let scala_cli_path = get_scala_cli_path().await
         .ok_or_else(|| anyhow::anyhow!("scala-cli is not available"))?;
 
+    eprintln!("  Running scala-cli {}...", args.join(" "));
     let mut cmd = Command::new(&scala_cli_path);
     if let Some(dir) = cwd { cmd.current_dir(dir); }
     for arg in args { cmd.arg(arg); }

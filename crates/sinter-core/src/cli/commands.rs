@@ -293,6 +293,11 @@ pub async fn cmd_test(cwd: &PathManager, file: Option<PathManager>) -> anyhow::R
     }
     let args_str: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
     let output = crate::build::execute_scala_cli(&args_str, Some(&project_dir)).await?;
+    // 清理 scala-cli 在测试目录生成的工件
+    if let Some(parent) = abs_test_target.parent() {
+        let _ = tokio::fs::remove_dir_all(parent.join(".bsp")).await;
+        let _ = tokio::fs::remove_dir_all(parent.join(".scala-build")).await;
+    }
     if !output.is_empty() { println!("{}", output); }
     Ok(())
 }

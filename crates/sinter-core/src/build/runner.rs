@@ -23,6 +23,16 @@ pub struct RunResult {
 
 // ━━━━━━━━━━━━━━━━━━━ Runner ━━━━━━━━━━━━━━━━━━━
 
+/// 清理 scala-cli 生成的工件文件
+async fn clean_artifacts(proj_dir: &Path, source_path: &Path) {
+    let _ = tokio::fs::remove_dir_all(source_path.join(".bsp")).await;
+    let _ = tokio::fs::remove_dir_all(source_path.join(".scala-build")).await;
+    let root_json = proj_dir.join("scala-cli.json");
+    if root_json.exists() {
+        let _ = tokio::fs::remove_file(&root_json).await;
+    }
+}
+
 /// 运行单个 Scala 文件 (无依赖)
 pub async fn run_scala_file(
     proj_dir: &Path, file_path: &Path, force_lib: bool,
@@ -46,6 +56,10 @@ pub async fn run_scala_file(
 
     if !output.status.success() {
         anyhow::bail!("scala-cli failed: {}", full_output);
+    }
+    // 清理 scala-cli 在源码目录和项目根生成的工件
+    if let Some(parent) = file_path.parent() {
+        clean_artifacts(proj_dir, &proj_dir.join(parent)).await;
     }
     Ok(RunResult { mode, output: full_output.trim().to_string() })
 }
@@ -74,6 +88,10 @@ pub async fn run_single_file_with_deps(
     if !output.status.success() {
         let err = String::from_utf8_lossy(&output.stderr);
         anyhow::bail!("Failed: {}", err);
+    }
+    // 清理 scala-cli 在源码目录生成的工件
+    if let Some(parent) = file_path.parent() {
+        clean_artifacts(proj_dir, &proj_dir.join(parent)).await;
     }
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
@@ -141,12 +159,6 @@ pub async fn build_with_deps(
         _ => anyhow::bail!("Unsupported backend: {}", backend),
     };
 
-    let _ = fs::remove_dir_all(source_path.join(".bsp")).await;
-    let _ = fs::remove_dir_all(source_path.join(".scala-build")).await;
-
-    let root_scala_cli_json = proj_dir.join("scala-cli.json");
-    if root_scala_cli_json.exists() {
-        let _ = fs::remove_file(&root_scala_cli_json).await;
-    }
+    clean_artifacts(proj_dir, &source_path).await;
     Ok(())
 }

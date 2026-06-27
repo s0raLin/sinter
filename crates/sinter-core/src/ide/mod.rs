@@ -7,16 +7,6 @@ use std::path::Path;
 
 // ━━━━━━━━━━━━━━━━━━━ BSP Setup ━━━━━━━━━━━━━━━━━━━
 
-async fn get_scala_cli_version(scala_cli_path: &str) -> anyhow::Result<String> {
-    use tokio::process::Command;
-    let output = Command::new(scala_cli_path).arg("--version").output().await?;
-    if output.status.success() {
-        let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if let Some(v) = version.split_whitespace().last() { return Ok(v.to_string()); }
-    }
-    Ok("1.11.0".to_string())
-}
-
 fn get_env_vars() -> serde_json::Value {
     let mut env_map = serde_json::Map::new();
     for (key, value) in env::vars() {
@@ -43,8 +33,7 @@ pub async fn setup_bsp(
         "scala-cli" => {
             let scala_cli_path = crate::build::get_scala_cli_path().await
                 .ok_or_else(|| anyhow::anyhow!("scala-cli is not available"))?;
-            let scala_cli_version = get_scala_cli_version(&scala_cli_path).await
-                .unwrap_or_else(|_| "1.11.0".to_string());
+            let scala_cli_version = "1.11.0".to_string();
 
             let mut scala_files = Vec::new();
             use walkdir::WalkDir;
